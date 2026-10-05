@@ -77,11 +77,15 @@ review it against; an admin's draft can also go through pending like anyone
 else's if they want another admin's eyes on it first. The shortcut applies
 only to an admin's own Post — an admin cannot push someone else's draft
 straight to published without it passing through pending. If the author's
-account is later deactivated: a draft is deleted (nothing worth keeping from
-someone who's left, and it would otherwise clutter the content list); a
-pending Post is left alone, since Staff still need to act on it; a published
-Post is left alone too and keeps its byline, since its value to readers has
-nothing to do with whether its author's account is still active.
+account is later deactivated, what happens to a draft depends on their role:
+an Ambassador's draft is deleted (nothing worth keeping from a student who's
+left, and it would otherwise clutter the content list); a Staff member's
+draft is left exactly as it is — it's usually CGE's own ongoing work, not a
+departing student's, and any other Staff member can already view, edit,
+publish, or delete it like any other Post. Either way, a pending Post is
+left alone, since Staff still need to act on it, and a published Post is
+left alone too and keeps its byline, since its value to readers has nothing
+to do with whether its author's account is still active.
 _Avoid_: treating pending as a synonym for draft — the manual's capability list
 names only draft/published, but this project adds pending as the explicit
 submit-for-review step the client asked for (see ADR-004).
