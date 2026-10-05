@@ -1,10 +1,13 @@
-"""Post authoring: draft CRUD, Topic, and a sanitized Markdown preview.
+"""Post authoring: draft CRUD, Topic, a sanitized Markdown preview, and the
+ADR-004 review-gate state machine (T04, #5).
 
 Unlike Pages (admin-only), Post authoring is open to any active user
 (require_user), with ownership enforced inside the route: an Ambassador
 (editor) may only touch their own Post, and only while it is draft; a Staff
-member (admin) may touch any Post, same as Pages. Submitting for review,
-publishing, bouncing, and unpublishing are T04 (#5), not here.
+member (admin) may touch any Post, same as Pages. The submit/publish/bounce/
+unpublish transitions delegate every allow/deny decision to
+app.services.review_gate, so this module just resolves the Post, asks the
+service whether the action is allowed, and persists the result.
 """
 from __future__ import annotations
 
@@ -14,7 +17,7 @@ from fastapi.responses import RedirectResponse
 
 from app import models, settings
 from app.routes.auth import ensure_csrf_token, require_user, verify_csrf
-from app.services import markdown
+from app.services import markdown, review_gate
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -47,6 +50,24 @@ def _authorize_post_write(user: models.User, post: models.Post) -> None:
         return
     if post.author_id != user.id or post.status != "draft":
         raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _apply_transition(user: models.User, post: models.Post, action: str) -> models.Post:
+    """Ask review_gate whether `action` is allowed, then persist its answer.
+
+    review_gate.transition raises ValueError -> 403 (not allowed at all).
+    models.set_post_status raises StatusConflict -> 409 (it *was* allowed
+    against the status we read, but another request changed it first).
+    """
+    is_author = post.author_id == user.id
+    try:
+        new_status = review_gate.transition(post.status, action, user.role, is_author)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    try:
+        return models.set_post_status(post.id, from_status=post.status, to_status=new_status)
+    except models.StatusConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 def _render_form(
@@ -85,9 +106,22 @@ def list_posts(
     if user.role != "admin":
         posts = [p for p in posts if p.author_id == user.id]
     token = ensure_csrf_token(request)
+    posts_with_actions = [
+        (
+            post,
+            [
+                (action, review_gate.ACTION_LABELS[action])
+                for action in review_gate.available_actions(
+                    post.status, user.role, post.author_id == user.id
+                )
+            ],
+        )
+        for post in posts
+    ]
     return templates.TemplateResponse(
         request, "admin/posts_list.html",
-        {"title": "Posts", "program": program, "posts": posts, "csrf_token": token},
+        {"title": "Posts", "program": program, "posts_with_actions": posts_with_actions,
+         "csrf_token": token},
     )
 
 
@@ -189,3 +223,43 @@ async def delete_post(
     program_id = post.program_id
     models.delete_post(post_id)
     return RedirectResponse(url=f"/admin/posts?program_id={program_id}", status_code=303)
+
+
+@router.post("/{post_id}/submit")
+async def submit_post(
+    post_id: int, user: models.User = Depends(require_user),
+    _csrf: None = Depends(verify_csrf),
+):
+    post = _get_post_or_404(post_id)
+    _apply_transition(user, post, "submit")
+    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)
+
+
+@router.post("/{post_id}/publish")
+async def publish_post(
+    post_id: int, user: models.User = Depends(require_user),
+    _csrf: None = Depends(verify_csrf),
+):
+    post = _get_post_or_404(post_id)
+    _apply_transition(user, post, "publish")
+    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)
+
+
+@router.post("/{post_id}/bounce")
+async def bounce_post(
+    post_id: int, user: models.User = Depends(require_user),
+    _csrf: None = Depends(verify_csrf),
+):
+    post = _get_post_or_404(post_id)
+    _apply_transition(user, post, "bounce")
+    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)
+
+
+@router.post("/{post_id}/unpublish")
+async def unpublish_post(
+    post_id: int, user: models.User = Depends(require_user),
+    _csrf: None = Depends(verify_csrf),
+):
+    post = _get_post_or_404(post_id)
+    _apply_transition(user, post, "unpublish")
+    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)

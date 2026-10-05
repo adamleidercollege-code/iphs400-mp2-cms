@@ -3,11 +3,17 @@
   <h1>Posts &mdash; {{ program.title }}</h1>
   <p><a href="posts/new?program_id={{ program.id }}">New post</a></p>
   <ul>
-    {% for post in posts %}
+    {% for post, actions in posts_with_actions %}
       <li>
         {{ post.title }} ({{ post.topic }}, {{ post.status }})
         <a href="posts/{{ post.id }}/edit">edit</a>
         <a href="posts/{{ post.id }}/delete">delete</a>
+        {% for action, label in actions %}
+          <form method="post" action="posts/{{ post.id }}/{{ action }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit">{{ label }}</button>
+          </form>
+        {% endfor %}
       </li>
     {% endfor %}
   </ul>

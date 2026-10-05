@@ -214,7 +214,9 @@ def test_create_post_requires_a_program_level_page(client_as):
     assert models.list_posts_by_program(continent.id) == []
 
 
-def test_seed_demo_seeds_draft_posts_across_topics(client):
+def test_seed_demo_seeds_posts_across_topics(client):
+    """Status coverage (draft/pending/published) is T04's acceptance
+    criterion — see tests/test_t04.py; this just covers Topic variety."""
     seed_demo = _load_seed_demo()
 
     admin = models.get_user_by_email("admin@example.test")
@@ -224,6 +226,5 @@ def test_seed_demo_seeds_draft_posts_across_topics(client):
 
     all_posts = [p for program in programs for p in models.list_posts_by_program(program.id)]
     assert len(all_posts) == len(programs)
-    assert all(p.status == "draft" for p in all_posts)
     assert all(p.author_id == editor.id for p in all_posts)
     assert len({p.topic for p in all_posts}) > 1

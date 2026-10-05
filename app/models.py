@@ -408,6 +408,44 @@ def update_post(post_id: int, title: str, body: str, topic: str) -> Post:
         conn.close()
 
 
+class StatusConflict(Exception):
+    """Raised by set_post_status when the Post's status no longer matches
+    `from_status` — another request changed it between the caller's read and
+    this write, e.g. one admin bounced a pending Post the instant another
+    admin published it. The caller re-reads and re-authorizes rather than
+    overwriting a decision it never actually validated."""
+
+
+def set_post_status(post_id: int, from_status: str, to_status: str) -> Post:
+    """Apply a review-gate transition (app.services.review_gate.transition
+    decides `to_status`; this is the one place that writes it), guarded by
+    `WHERE status = from_status` so a stale read can never clobber a status
+    change made in between. published_at is set on entry to 'published' and
+    cleared on any exit from it, so it never lingers on a Post that isn't
+    currently live.
+    """
+    conn = db.get_connection()
+    try:
+        published_at_sql = (
+            "published_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), "
+            if to_status == "published" else "published_at = NULL, "
+        )
+        cur = conn.execute(
+            "UPDATE posts SET status = ?, " + published_at_sql +
+            "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') "
+            "WHERE id = ? AND status = ?",
+            (to_status, post_id, from_status),
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            raise StatusConflict(
+                f"post {post_id} is no longer {from_status!r}; refresh and retry"
+            )
+        return get_post_by_id(post_id)
+    finally:
+        conn.close()
+
+
 def delete_post(post_id: int) -> None:
     conn = db.get_connection()
     try:

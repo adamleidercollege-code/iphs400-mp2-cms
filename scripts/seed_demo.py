@@ -40,6 +40,10 @@ STANDALONE_PAGES = ["About CGE", "Contact Us"]
 # (T03 acceptance: "a few draft Posts across different Topics").
 POST_TOPICS = ["housing", "meals", "social-life", "academics", "other", "general"]
 
+# Cycled too, so the review-gate workflow (ADR-004) is visible on a fresh
+# clone (T04 acceptance): at least one Post in each status.
+POST_STATUSES = ["draft", "pending", "published"]
+
 
 def _placeholder_body(title: str) -> str:
     return (
@@ -88,12 +92,18 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
 
     for i, program in enumerate(programs):
         topic = POST_TOPICS[i % len(POST_TOPICS)]
+        status = POST_STATUSES[i % len(POST_STATUSES)]
         title = f"My first week at {program.title}"
-        models.create_post(
+        post = models.create_post(
             program_id=program.id, title=title, body=_placeholder_body(title),
             topic=topic, author_id=editor_id,
         )
-    print(f"Seeded {len(programs)} draft posts across Topics under the seeded Programs.")
+        if status in ("pending", "published"):
+            models.set_post_status(post.id, from_status="draft", to_status="pending")
+        if status == "published":
+            models.set_post_status(post.id, from_status="pending", to_status="published")
+    print(f"Seeded {len(programs)} posts across Topics and statuses "
+          "(draft/pending/published) under the seeded Programs.")
 
 
 def main() -> int:
