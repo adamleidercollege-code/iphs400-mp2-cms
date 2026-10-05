@@ -46,3 +46,5 @@ Issues and specs live in this repo's GitHub Issues (`adamleidercollege-code/iphs
 ### Domain docs
 
 Single-context layout: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+Reminder: as soon as issue #4 (T03) is closed, tell the user to run scripts/check_submission.py --stage 1, fix what it flags, then tag and push mp2-mvp. Delete this line after the tag is pushed.
