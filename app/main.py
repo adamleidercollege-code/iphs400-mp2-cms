@@ -15,7 +15,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import db, models, settings
-from app.routes import auth
+from app.routes import auth, pages, public
 from app.routes.auth import (
     AdminRequired,
     CsrfInvalid,
@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
         return PlainTextResponse("Forbidden: missing or invalid CSRF token", status_code=403)
 
     app.include_router(auth.router)
+    app.include_router(pages.router)
 
     @app.get("/admin")
     def admin_home(request: Request, user: models.User | None = Depends(get_current_user)):
@@ -55,12 +56,9 @@ def create_app() -> FastAPI:
             {"title": "Admin", "user": user, "csrf_token": csrf_token},
         )
 
-    @app.get("/")
-    def public_home(request: Request):
-        return templates.TemplateResponse(
-            request, "public/home.html",
-            {"title": settings.SITE_TITLE, "items": []},
-        )
+    # Catch-all last: the live public site, read straight from the database —
+    # the admin console's "preview" of what `cms publish` will later export.
+    app.include_router(public.router)
 
     # Your ticket work plugs in here, e.g.
     #   from app.routes import posts

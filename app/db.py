@@ -16,6 +16,23 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+
+CREATE TABLE IF NOT EXISTS pages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id INTEGER REFERENCES pages(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL CHECK (status IN ('draft', 'published')) DEFAULT 'draft',
+    show_in_footer INTEGER NOT NULL DEFAULT 0,
+    author_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    published_at TEXT
+);
+
+-- At most one root (parent_id IS NULL) Page — the single Home — ever exists.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pages_single_home ON pages((1)) WHERE parent_id IS NULL;
 """
 
 

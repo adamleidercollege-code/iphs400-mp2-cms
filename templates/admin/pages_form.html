@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>Parent: {{ parent.title }}</p>
+  {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+  {% if page %}
+    <p>Slug: {{ page.slug }}{% if page.status != "draft" %} (frozen){% endif %}</p>
+  {% endif %}
+  <form method="post" action="{{ '/admin/pages/' ~ page.id ~ '/edit' if page else '/admin/pages/new' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if not page %}<input type="hidden" name="parent_id" value="{{ parent.id }}">{% endif %}
+    <label>Title <input type="text" name="title" value="{{ page.title if page else '' }}" required></label>
+    <label>Body (Markdown)
+      <textarea name="body" rows="10">{{ page.body if page else '' }}</textarea>
+    </label>
+    <label>
+      <input type="checkbox" name="show_in_footer" {% if page and page.show_in_footer %}checked{% endif %}>
+      Show in footer
+    </label>
+    <button type="submit">Save</button>
+  </form>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Delete "{{ page.title }}"?</h1>
+  <p>Are you sure? This also deletes any pages nested under it. This cannot be undone.</p>
+  <form method="post" action="/admin/pages/{{ page.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Yes, delete it</button>
+  </form>
+  <p><a href="/admin/pages">Cancel</a></p>
+{% endblock %}

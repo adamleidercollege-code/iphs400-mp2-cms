@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ title }}{% endblock %}</title>
+  {% if css_path %}<link rel="stylesheet" href="{{ css_path }}">{% endif %}
+  {% if inline_css %}<style>{{ inline_css }}</style>{% endif %}
+</head>
+<body>
+  <header>
+    <nav class="site-nav">
+      {% for item in nav %}<a href="{{ item.href }}">{{ item.title }}</a>{% endfor %}
+    </nav>
+  </header>
+  {% if breadcrumb %}
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    {% for item in breadcrumb %}<a href="{{ item.href }}">{{ item.title }}</a>{% if not loop.last %} &rsaquo; {% endif %}{% endfor %}
+  </nav>
+  {% endif %}
+  <main>{% block content %}{% endblock %}</main>
+  <footer>
+    {% if footer_links %}
+    <nav class="site-footer-nav">
+      {% for item in footer_links %}<a href="{{ item.href }}">{{ item.title }}</a>{% endfor %}
+    </nav>
+    {% endif %}
+    <small>IPHS 400 Mini-Project #2</small>
+  </footer>
+</body>
+</html>

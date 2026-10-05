@@ -19,6 +19,56 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import db, models  # noqa: E402
 
+# Continent -> Country -> [Program, ...], per T02's seed requirement.
+CONTINENTS = {
+    "Asia": {
+        "Japan": ["Kyoto Exchange"],
+        "South Korea": ["Seoul Studies"],
+    },
+    "Africa": {
+        "Kenya": ["Nairobi Fieldwork"],
+        "South Africa": ["Cape Town Semester"],
+    },
+    "Europe": {
+        "Spain": ["Madrid Language Immersion"],
+        "France": ["Paris Arts & Culture"],
+    },
+}
+STANDALONE_PAGES = ["About CGE", "Contact Us"]
+
+
+def _placeholder_body(title: str) -> str:
+    return (
+        f"Placeholder copy for **{title}**. Replace this with real content "
+        "once CGE has something to say here."
+    )
+
+
+def _seed_pages(admin_id: int) -> None:
+    home = models.ensure_home_page()
+    if models.list_children(home.id):
+        print("Pages already seeded, leaving the tree as-is.")
+        return
+
+    def _add(parent_id: int, title: str, show_in_footer: bool = False) -> models.Page:
+        page = models.create_page(
+            parent_id=parent_id, title=title, body=_placeholder_body(title),
+            show_in_footer=show_in_footer, author_id=admin_id,
+        )
+        return models.publish_page(page.id)
+
+    for continent_title, countries in CONTINENTS.items():
+        continent = _add(home.id, continent_title)
+        for country_title, programs in countries.items():
+            country = _add(continent.id, country_title)
+            for program_title in programs:
+                _add(country.id, program_title)
+
+    for standalone_title in STANDALONE_PAGES:
+        _add(home.id, standalone_title, show_in_footer=True)
+
+    print("Seeded the Continent -> Country -> Program tree and standalone pages.")
+
 
 def main() -> int:
     admin_pw = os.environ.get("CMS_ADMIN_PASSWORD")
@@ -39,6 +89,9 @@ def main() -> int:
             models.create_user(email=email, password=pw, role=role,
                                 display_name=name, active=active)
     print("Seeded admin, editor, and deactivated demo users.")
+
+    admin = models.get_user_by_email("admin@example.test")
+    _seed_pages(admin.id)
     return 0
 
 

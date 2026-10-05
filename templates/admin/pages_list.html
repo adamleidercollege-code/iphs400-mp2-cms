@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Pages</h1>
+  {% macro render_tree(nodes) %}
+    <ul>
+      {% for node in nodes %}
+        <li>
+          {{ node.page.title }}
+          ({{ node.page.status }}{% if node.page.show_in_footer %}, footer{% endif %})
+          <a href="/admin/pages/{{ node.page.id }}/edit">edit</a>
+          <a href="/admin/pages/new?parent_id={{ node.page.id }}">add child</a>
+          {% if node.page.status == "draft" %}
+            <form method="post" action="/admin/pages/{{ node.page.id }}/publish" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit">publish</button>
+            </form>
+          {% endif %}
+          <a href="/admin/pages/{{ node.page.id }}/delete">delete</a>
+          {% if node.children %}{{ render_tree(node.children) }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endmacro %}
+  <p>{{ home.title }} <a href="/admin/pages/new?parent_id={{ home.id }}">add child</a></p>
+  {{ render_tree(tree) }}
+{% endblock %}
