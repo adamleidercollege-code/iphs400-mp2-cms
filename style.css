@@ -1,16 +1,92 @@
-/* Minimal starter styles — make them yours. */
-:root { color-scheme: light dark; }
-body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 42rem; padding: 1rem; }
-header a { font-weight: 700; text-decoration: none; }
-main { margin-block: 2rem; }
+/* Kenyon purple, per the T05 design acceptance. */
+:root {
+  color-scheme: light dark;
+  --purple: #5B2A86;
+  --purple-dark: #3E1C5E;
+  --purple-light: #F2EBFA;
+  --ink: #1F1626;
+  --card-border: #DCCFEA;
+}
+* { box-sizing: border-box; }
+body {
+  font: 16px/1.6 system-ui, sans-serif;
+  margin: 0 auto;
+  max-width: 60rem;
+  padding: 0 1rem 2rem;
+  color: var(--ink);
+}
+a { color: var(--purple-dark); }
+header {
+  background: var(--purple);
+  margin: 0 -1rem;
+  padding: 0.75rem 1rem;
+}
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+.site-nav a { color: #fff; font-weight: 700; text-decoration: none; }
+.site-nav a:hover { text-decoration: underline; }
+main { margin-block: 1.5rem; }
+.breadcrumb { font-size: 0.9rem; margin-block: 1rem; color: #5a5064; }
+.breadcrumb a { color: inherit; }
 
-.site-nav, .site-footer-nav {
+.card-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 0;
+}
+.card {
+  border: 1px solid var(--card-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: var(--purple-light);
+}
+.card a { text-decoration: none; font-weight: 700; }
+.post-meta { font-size: 0.85rem; color: #5a5064; margin: 0.35rem 0 0; }
+.post-topic-badge {
+  display: inline-block;
+  background: var(--purple);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.15rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.topic-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.topic-pill {
+  border: 1px solid var(--purple);
+  background: #fff;
+  color: var(--purple-dark);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}
+.topic-pill.is-active { background: var(--purple); color: #fff; }
+
+footer {
+  border-top: 1px solid var(--card-border);
+  margin-top: 2rem;
+  padding-top: 1rem;
+}
+.site-footer-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
 }
-.breadcrumb { font-size: 0.9rem; margin-block: 0.5rem; }
 
 @media (max-width: 480px) {
   .site-nav, .site-footer-nav { flex-direction: column; gap: 0.25rem; }
+  .card-grid { grid-template-columns: 1fr; }
 }

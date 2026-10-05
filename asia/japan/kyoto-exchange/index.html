@@ -23,6 +23,45 @@
   <p>Placeholder copy for <strong>Kyoto Exchange</strong>. Replace this with real content once CGE has something to say here.</p>
 
   
+  
+    
+      <div class="topic-filters" role="group" aria-label="Filter by Topic">
+        <button type="button" class="topic-pill is-active" data-topic="all">All</button>
+        
+          <button type="button" class="topic-pill" data-topic="social-life">Social Life</button>
+        
+      </div>
+      
+        <section class="post-topic-group" data-topic="social-life">
+          <h2>Social Life</h2>
+          <ul class="card-grid">
+            
+              <li class="card post-card">
+                <a href="../../../asia/japan/kyoto-exchange/my-first-week-at-kyoto-exchange/index.html">My first week at Kyoto Exchange</a>
+                <p class="post-meta">Ambassador Demo &middot; 2026-10-05</p>
+              </li>
+            
+          </ul>
+        </section>
+      
+      <script>
+        (function () {
+          var buttons = document.querySelectorAll(".topic-pill");
+          var groups = document.querySelectorAll(".post-topic-group");
+          buttons.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              buttons.forEach(function (b) { b.classList.remove("is-active"); });
+              btn.classList.add("is-active");
+              var topic = btn.getAttribute("data-topic");
+              groups.forEach(function (g) {
+                g.hidden = topic !== "all" && g.getAttribute("data-topic") !== topic;
+              });
+            });
+          });
+        })();
+      </script>
+    
+  
 </main>
   <footer>
     
