@@ -36,6 +36,10 @@ CONTINENTS = {
 }
 STANDALONE_PAGES = ["About CGE", "Contact Us"]
 
+# Cycled across the seeded Programs so posts land across different Topics
+# (T03 acceptance: "a few draft Posts across different Topics").
+POST_TOPICS = ["housing", "meals", "social-life", "academics", "other", "general"]
+
 
 def _placeholder_body(title: str) -> str:
     return (
@@ -44,11 +48,16 @@ def _placeholder_body(title: str) -> str:
     )
 
 
-def _seed_pages(admin_id: int) -> None:
+def _seed_pages(admin_id: int) -> list[models.Page]:
     home = models.ensure_home_page()
     if models.list_children(home.id):
         print("Pages already seeded, leaving the tree as-is.")
-        return
+        return [
+            program
+            for continent in models.list_children(home.id)
+            for country in models.list_children(continent.id)
+            for program in models.list_children(country.id)
+        ]
 
     def _add(parent_id: int, title: str, show_in_footer: bool = False) -> models.Page:
         page = models.create_page(
@@ -57,17 +66,34 @@ def _seed_pages(admin_id: int) -> None:
         )
         return models.publish_page(page.id)
 
+    programs: list[models.Page] = []
     for continent_title, countries in CONTINENTS.items():
         continent = _add(home.id, continent_title)
-        for country_title, programs in countries.items():
+        for country_title, program_titles in countries.items():
             country = _add(continent.id, country_title)
-            for program_title in programs:
-                _add(country.id, program_title)
+            for program_title in program_titles:
+                programs.append(_add(country.id, program_title))
 
     for standalone_title in STANDALONE_PAGES:
         _add(home.id, standalone_title, show_in_footer=True)
 
     print("Seeded the Continent -> Country -> Program tree and standalone pages.")
+    return programs
+
+
+def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
+    if not programs or any(models.list_posts_by_program(p.id) for p in programs):
+        print("Posts already seeded (or no programs to seed under), leaving as-is.")
+        return
+
+    for i, program in enumerate(programs):
+        topic = POST_TOPICS[i % len(POST_TOPICS)]
+        title = f"My first week at {program.title}"
+        models.create_post(
+            program_id=program.id, title=title, body=_placeholder_body(title),
+            topic=topic, author_id=editor_id,
+        )
+    print(f"Seeded {len(programs)} draft posts across Topics under the seeded Programs.")
 
 
 def main() -> int:
@@ -91,7 +117,9 @@ def main() -> int:
     print("Seeded admin, editor, and deactivated demo users.")
 
     admin = models.get_user_by_email("admin@example.test")
-    _seed_pages(admin.id)
+    editor = models.get_user_by_email("editor@example.test")
+    programs = _seed_pages(admin.id)
+    _seed_posts(programs, editor.id)
     return 0
 
 

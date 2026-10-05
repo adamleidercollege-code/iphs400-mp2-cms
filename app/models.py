@@ -288,3 +288,130 @@ def delete_page(page_id: int) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+TOPIC_CHOICES = [
+    ("general", "General"),
+    ("housing", "Housing"),
+    ("meals", "Meals"),
+    ("social-life", "Social Life"),
+    ("academics", "Academics"),
+    ("other", "Other"),
+]
+TOPIC_VALUES = {value for value, _label in TOPIC_CHOICES}
+
+
+@dataclass(frozen=True)
+class Post:
+    id: int
+    program_id: int
+    title: str
+    slug: str
+    body: str
+    topic: str
+    status: str
+    author_id: int | None
+    created_at: str
+    updated_at: str
+    published_at: str | None
+
+
+def _row_to_post(row: sqlite3.Row) -> Post:
+    return Post(
+        id=row["id"],
+        program_id=row["program_id"],
+        title=row["title"],
+        slug=row["slug"],
+        body=row["body"],
+        topic=row["topic"],
+        status=row["status"],
+        author_id=row["author_id"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+        published_at=row["published_at"],
+    )
+
+
+def get_post_by_id(post_id: int) -> Post | None:
+    conn = db.get_connection()
+    try:
+        row = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
+        return _row_to_post(row) if row else None
+    finally:
+        conn.close()
+
+
+def list_posts_by_program(program_id: int) -> list[Post]:
+    conn = db.get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM posts WHERE program_id = ? ORDER BY created_at DESC",
+            (program_id,),
+        ).fetchall()
+        return [_row_to_post(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def is_program_page(page: Page) -> bool:
+    """A Program is the Page three levels below Home (Home -> Continent ->
+    Country -> Program), per CONTEXT.md and the spec's Post.program_id field."""
+    return len(list_ancestors(page)) == 3
+
+
+def create_post(program_id: int, title: str, body: str, topic: str, author_id: int) -> Post:
+    program = get_page_by_id(program_id)
+    if program is None:
+        raise ValueError(f"program page {program_id} does not exist")
+    if not is_program_page(program):
+        raise ValueError(f"page {program_id} is not a Program-level page")
+    if topic not in TOPIC_VALUES:
+        raise ValueError(f"invalid topic: {topic!r}")
+    sibling_slugs = {p.slug for p in list_posts_by_program(program_id)}
+    slug = slugs.dedupe(slugs.slugify(title), sibling_slugs)
+    conn = db.get_connection()
+    try:
+        cur = conn.execute(
+            "INSERT INTO posts (program_id, title, slug, body, topic, author_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (program_id, title, slug, body, topic, author_id),
+        )
+        conn.commit()
+        return get_post_by_id(cur.lastrowid)
+    finally:
+        conn.close()
+
+
+def update_post(post_id: int, title: str, body: str, topic: str) -> Post:
+    post = get_post_by_id(post_id)
+    if post is None:
+        raise ValueError(f"post {post_id} does not exist")
+    if topic not in TOPIC_VALUES:
+        raise ValueError(f"invalid topic: {topic!r}")
+    if post.status == "draft":
+        sibling_slugs = {
+            p.slug for p in list_posts_by_program(post.program_id) if p.id != post.id
+        }
+        slug = slugs.dedupe(slugs.slugify(title), sibling_slugs)
+    else:
+        slug = post.slug  # frozen the moment status leaves draft
+    conn = db.get_connection()
+    try:
+        conn.execute(
+            "UPDATE posts SET title = ?, slug = ?, body = ?, topic = ?, "
+            "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?",
+            (title, slug, body, topic, post_id),
+        )
+        conn.commit()
+        return get_post_by_id(post_id)
+    finally:
+        conn.close()
+
+
+def delete_post(post_id: int) -> None:
+    conn = db.get_connection()
+    try:
+        conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+        conn.commit()
+    finally:
+        conn.close()

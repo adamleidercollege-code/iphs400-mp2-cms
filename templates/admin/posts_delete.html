@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Delete "{{ post.title }}"?</h1>
+  <p>Are you sure? This cannot be undone.</p>
+  <form method="post" action="/admin/posts/{{ post.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Yes, delete it</button>
+  </form>
+  <p><a href="/admin/posts?program_id={{ post.program_id }}">Cancel</a></p>
+{% endblock %}

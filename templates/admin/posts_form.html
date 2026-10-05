@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>Program: {{ program.title }}</p>
+  {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+  {% if post %}
+    <p>Slug: {{ post.slug }}{% if post.status != "draft" %} (frozen){% endif %}</p>
+  {% endif %}
+  <form method="post" action="{{ '/admin/posts/' ~ post.id ~ '/edit' if post else '/admin/posts/new' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if not post %}<input type="hidden" name="program_id" value="{{ program.id }}">{% endif %}
+    <label>Title <input type="text" name="title" value="{{ form_title }}" required></label>
+    <label>Topic
+      <select name="topic">
+        {% for value, label in topics %}
+          <option value="{{ value }}" {% if value == form_topic %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Body (Markdown)
+      <textarea name="body" rows="10">{{ form_body }}</textarea>
+    </label>
+    <button type="submit" name="action" value="preview">Preview</button>
+    <button type="submit" name="action" value="save">Save</button>
+  </form>
+  <h2>Preview</h2>
+  <div class="post-preview">{{ preview_html | safe }}</div>
+{% endblock %}

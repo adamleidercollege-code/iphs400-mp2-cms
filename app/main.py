@@ -15,7 +15,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import db, models, settings
-from app.routes import auth, pages, public
+from app.routes import auth, pages, posts, public
 from app.routes.auth import (
     AdminRequired,
     CsrfInvalid,
@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(pages.router)
+    app.include_router(posts.router)
 
     @app.get("/admin")
     def admin_home(request: Request, user: models.User | None = Depends(get_current_user)):

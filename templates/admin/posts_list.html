@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Posts &mdash; {{ program.title }}</h1>
+  <p><a href="/admin/posts/new?program_id={{ program.id }}">New post</a></p>
+  <ul>
+    {% for post in posts %}
+      <li>
+        {{ post.title }} ({{ post.topic }}, {{ post.status }})
+        <a href="/admin/posts/{{ post.id }}/edit">edit</a>
+        <a href="/admin/posts/{{ post.id }}/delete">delete</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
