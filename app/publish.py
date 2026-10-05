@@ -1,10 +1,12 @@
 """Render the public site into site/ as plain HTML.
 
 Walks the Page tree and writes one `index.html` per PUBLISHED page, at the
-nested path implied by its ancestors' slugs (e.g. site/asia/japan/kyoto/).
-Two rules the rubric checks:
+nested path implied by its ancestors' slugs (e.g. site/asia/japan/kyoto/),
+plus one `index.html` per PUBLISHED Post, nested one level under its Program
+(e.g. site/asia/japan/kyoto/my-first-week/). Two rules the rubric checks:
 
-  1. Only PUBLISHED content is written here. A draft that reaches site/ is a bug.
+  1. Only PUBLISHED content is written here. A draft or pending Post, like a
+     draft Page, reaching site/ is a bug.
   2. Every href and src is RELATIVE ("style.css", "asia/index.html"), never
      root-absolute ("/style.css"), because Pages serves this from a subfolder.
 """
@@ -16,23 +18,99 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app import models, settings
-from app.services import markdown
+from app.services import markdown, post_view
 
-CSS = """/* Minimal starter styles — make them yours. */
-:root { color-scheme: light dark; }
-body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 42rem; padding: 1rem; }
-header a { font-weight: 700; text-decoration: none; }
-main { margin-block: 2rem; }
+CSS = """/* Kenyon purple, per the T05 design acceptance. */
+:root {
+  color-scheme: light dark;
+  --purple: #5B2A86;
+  --purple-dark: #3E1C5E;
+  --purple-light: #F2EBFA;
+  --ink: #1F1626;
+  --card-border: #DCCFEA;
+}
+* { box-sizing: border-box; }
+body {
+  font: 16px/1.6 system-ui, sans-serif;
+  margin: 0 auto;
+  max-width: 60rem;
+  padding: 0 1rem 2rem;
+  color: var(--ink);
+}
+a { color: var(--purple-dark); }
+header {
+  background: var(--purple);
+  margin: 0 -1rem;
+  padding: 0.75rem 1rem;
+}
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+.site-nav a { color: #fff; font-weight: 700; text-decoration: none; }
+.site-nav a:hover { text-decoration: underline; }
+main { margin-block: 1.5rem; }
+.breadcrumb { font-size: 0.9rem; margin-block: 1rem; color: #5a5064; }
+.breadcrumb a { color: inherit; }
 
-.site-nav, .site-footer-nav {
+.card-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 0;
+}
+.card {
+  border: 1px solid var(--card-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: var(--purple-light);
+}
+.card a { text-decoration: none; font-weight: 700; }
+.post-meta { font-size: 0.85rem; color: #5a5064; margin: 0.35rem 0 0; }
+.post-topic-badge {
+  display: inline-block;
+  background: var(--purple);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.15rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.topic-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.topic-pill {
+  border: 1px solid var(--purple);
+  background: #fff;
+  color: var(--purple-dark);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}
+.topic-pill.is-active { background: var(--purple); color: #fff; }
+
+footer {
+  border-top: 1px solid var(--card-border);
+  margin-top: 2rem;
+  padding-top: 1rem;
+}
+.site-footer-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
 }
-.breadcrumb { font-size: 0.9rem; margin-block: 0.5rem; }
 
 @media (max-width: 480px) {
   .site-nav, .site-footer-nav { flex-direction: column; gap: 0.25rem; }
+  .card-grid { grid-template-columns: 1fr; }
 }
 """
 
@@ -57,6 +135,27 @@ def _relative_link(from_chain: list[str], to_chain: list[str]) -> str:
     return f"{up}{'/'.join(to_chain)}/index.html"
 
 
+def _furniture(
+    chain: list[str],
+    home: models.Page,
+    continents: list[models.Page],
+    footer_pages: list[models.Page],
+    chains: dict[int, list[str]],
+) -> tuple[str, list[dict], list[dict]]:
+    """CSS path, nav, and footer links for the page/post living at `chain` —
+    shared between a Page's own render and each of its Posts' renders."""
+    css_path = _relative_link(chain, [])[: -len("index.html")] + "style.css"
+    nav = [{"title": home.title, "href": _relative_link(chain, [])}] + [
+        {"title": c.title, "href": _relative_link(chain, chains[c.id])}
+        for c in continents
+    ]
+    footer_links = [
+        {"title": f.title, "href": _relative_link(chain, chains[f.id])}
+        for f in footer_pages
+    ]
+    return css_path, nav, footer_links
+
+
 def render_site(out: Path | None = None) -> Path:
     out = out or settings.SITE
     if out.exists():
@@ -72,31 +171,31 @@ def render_site(out: Path | None = None) -> Path:
     continents = models.list_published_children(home.id)
     footer_pages = models.list_footer_pages()
 
-    template = env.get_template("public/page.html")
+    page_template = env.get_template("public/page.html")
+    post_template = env.get_template("public/post.html")
 
     for page in all_pages:
         if page.status != "published":
             continue
         chain = chains[page.id]
-        css_path = _relative_link(chain, [])[: -len("index.html")] + "style.css"
-        nav = [{"title": home.title, "href": _relative_link(chain, [])}] + [
-            {"title": c.title, "href": _relative_link(chain, chains[c.id])}
-            for c in continents
-        ]
+        css_path, nav, footer_links = _furniture(chain, home, continents, footer_pages, chains)
         breadcrumb = [
             {"title": a.title, "href": _relative_link(chain, chains[a.id])}
             for a in models.list_ancestors(page)
         ] + [{"title": page.title, "href": _relative_link(chain, chain)}]
-        footer_links = [
-            {"title": f.title, "href": _relative_link(chain, chains[f.id])}
-            for f in footer_pages
-        ]
         children = [
             {"title": c.title, "href": _relative_link(chain, chains[c.id])}
             for c in models.list_published_children(page.id)
         ]
 
-        html = template.render(
+        post_groups = None
+        if models.is_program_page(page):
+            posts = models.list_published_posts_by_program(page.id)
+            post_groups = post_view.grouped_post_summaries(
+                posts, lambda post: _relative_link(chain, chain + [post.slug])
+            )
+
+        html = page_template.render(
             title=page.title,
             page=page,
             body_html=markdown.render(page.body),
@@ -105,10 +204,45 @@ def render_site(out: Path | None = None) -> Path:
             breadcrumb=breadcrumb,
             footer_links=footer_links,
             children=children,
+            post_groups=post_groups,
         )
 
         page_dir = out.joinpath(*chain) if chain else out
         page_dir.mkdir(parents=True, exist_ok=True)
         (page_dir / "index.html").write_text(html)
+
+        if not post_groups:
+            continue
+        for _topic_value, _topic_label, summaries in post_groups:
+            for summary in summaries:
+                post = summary["post"]
+                post_chain = chain + [post.slug]
+                post_css_path, post_nav, post_footer_links = _furniture(
+                    post_chain, home, continents, footer_pages, chains
+                )
+                post_breadcrumb = [
+                    {"title": a.title, "href": _relative_link(post_chain, chains[a.id])}
+                    for a in models.list_ancestors(page)
+                ] + [
+                    {"title": page.title, "href": _relative_link(post_chain, chain)},
+                    {"title": post.title, "href": _relative_link(post_chain, post_chain)},
+                ]
+                post_html = post_template.render(
+                    title=post.title,
+                    post=post,
+                    topic_label=summary["topic_label"],
+                    author_name=summary["author_name"],
+                    published_date=summary["published_date"],
+                    body_html=markdown.render(post.body),
+                    css_path=post_css_path,
+                    nav=post_nav,
+                    breadcrumb=post_breadcrumb,
+                    footer_links=post_footer_links,
+                    program_href=_relative_link(post_chain, chain),
+                    program_title=page.title,
+                )
+                post_dir = out.joinpath(*post_chain)
+                post_dir.mkdir(parents=True, exist_ok=True)
+                (post_dir / "index.html").write_text(post_html)
 
     return out

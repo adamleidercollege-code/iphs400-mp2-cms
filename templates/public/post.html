@@ -1,0 +1,10 @@
+{% extends "public/base.html" %}
+{% block content %}
+  <article class="post">
+    <p class="post-topic-badge">{{ topic_label }}</p>
+    <h1>{{ post.title }}</h1>
+    <p class="post-meta">By {{ author_name }} &middot; {{ published_date }}</p>
+    {{ body_html | safe }}
+    <p><a href="{{ program_href }}">&larr; Back to {{ program_title }}</a></p>
+  </article>
+{% endblock %}

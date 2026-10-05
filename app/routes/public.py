@@ -14,23 +14,30 @@ from fastapi.templating import Jinja2Templates
 
 from app import models, settings
 from app.publish import CSS
-from app.services import markdown
+from app.services import markdown, post_view
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
 router = APIRouter()
 
 
-def resolve_page(path: str) -> models.Page | None:
+def resolve(path: str) -> tuple[str, models.Page] | tuple[str, models.Post, models.Page] | None:
+    """A Page by its full path, or — one segment further, under a Program —
+    a published Post by slug. Returns None on no match."""
     home = models.ensure_home_page()
     segments = [s for s in path.strip("/").split("/") if s]
     current = home
-    for segment in segments:
+    for i, segment in enumerate(segments):
         child = models.get_child_by_slug(current.id, segment)
-        if child is None:
-            return None
-        current = child
-    return current
+        if child is not None:
+            current = child
+            continue
+        if i == len(segments) - 1 and models.is_program_page(current):
+            post = models.get_published_post_by_slug(current.id, segment)
+            if post is not None:
+                return "post", post, current
+        return None
+    return "page", current
 
 
 def _path_for(page: models.Page, home: models.Page) -> str:
@@ -47,6 +54,15 @@ def page_context(page: models.Page) -> dict:
     footer_pages = models.list_footer_pages()
     ancestors = [a for a in models.list_ancestors(page) if a.id != page.id]
     children = models.list_published_children(page.id)
+
+    post_groups = None
+    if models.is_program_page(page):
+        page_href = _path_for(page, home)
+        posts = models.list_published_posts_by_program(page.id)
+        post_groups = post_view.grouped_post_summaries(
+            posts, lambda post: page_href.rstrip("/") + f"/{post.slug}/"
+        )
+
     return {
         "page": page,
         "body_html": markdown.render(page.body),
@@ -61,13 +77,54 @@ def page_context(page: models.Page) -> dict:
         "children": [
             {"title": c.title, "href": _path_for(c, home)} for c in children
         ],
+        "post_groups": post_groups,
+    }
+
+
+def post_context(post: models.Post, program: models.Page) -> dict:
+    home = models.ensure_home_page()
+    continents = models.list_published_children(home.id)
+    footer_pages = models.list_footer_pages()
+    ancestors = [a for a in models.list_ancestors(program) if a.id != program.id]
+    program_href = _path_for(program, home)
+    post_href = program_href.rstrip("/") + f"/{post.slug}/"
+    summary = post_view.post_summary(post, post_href)
+
+    return {
+        "post": post,
+        "body_html": markdown.render(post.body),
+        "topic_label": summary["topic_label"],
+        "author_name": summary["author_name"],
+        "published_date": summary["published_date"],
+        "program_href": program_href,
+        "program_title": program.title,
+        "nav": [{"title": home.title, "href": "/"}] + [
+            {"title": c.title, "href": _path_for(c, home)} for c in continents
+        ],
+        "breadcrumb": [{"title": a.title, "href": _path_for(a, home)} for a in ancestors]
+        + [{"title": program.title, "href": program_href},
+           {"title": post.title, "href": post_href}],
+        "footer_links": [
+            {"title": f.title, "href": _path_for(f, home)} for f in footer_pages
+        ],
     }
 
 
 @router.get("/{path:path}")
 def public_page(request: Request, path: str):
-    page = resolve_page(path)
-    if page is None or page.status != "published":
+    resolved = resolve(path)
+    if resolved is None:
+        raise HTTPException(status_code=404)
+
+    if resolved[0] == "post":
+        _kind, post, program = resolved
+        return templates.TemplateResponse(
+            request, "public/post.html",
+            {"title": post.title, "inline_css": CSS, **post_context(post, program)},
+        )
+
+    _kind, page = resolved
+    if page.status != "published":
         raise HTTPException(status_code=404)
     return templates.TemplateResponse(
         request, "public/page.html",

@@ -353,6 +353,46 @@ def list_posts_by_program(program_id: int) -> list[Post]:
         conn.close()
 
 
+def list_published_posts_by_program(program_id: int) -> list[Post]:
+    """Public-facing: only published Posts, most recent first. A draft or
+    pending Post must never reach a public response (hard constraint)."""
+    conn = db.get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM posts WHERE program_id = ? AND status = 'published' "
+            "ORDER BY published_at DESC",
+            (program_id,),
+        ).fetchall()
+        return [_row_to_post(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_published_post_by_slug(program_id: int, slug: str) -> Post | None:
+    conn = db.get_connection()
+    try:
+        row = conn.execute(
+            "SELECT * FROM posts WHERE program_id = ? AND slug = ? AND status = 'published'",
+            (program_id, slug),
+        ).fetchone()
+        return _row_to_post(row) if row else None
+    finally:
+        conn.close()
+
+
+def group_posts_by_topic(posts: list[Post]) -> list[tuple[str, str, list[Post]]]:
+    """Posts in Topic order (CONTEXT.md: General first, then each Hot Topic),
+    skipping any Topic with nothing to show."""
+    buckets: dict[str, list[Post]] = {value: [] for value, _label in TOPIC_CHOICES}
+    for post in posts:
+        buckets[post.topic].append(post)
+    return [
+        (value, label, buckets[value])
+        for value, label in TOPIC_CHOICES
+        if buckets[value]
+    ]
+
+
 def is_program_page(page: Page) -> bool:
     """A Program is the Page three levels below Home (Home -> Continent ->
     Country -> Program), per CONTEXT.md and the spec's Post.program_id field."""
