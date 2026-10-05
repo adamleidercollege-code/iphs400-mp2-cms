@@ -14,6 +14,9 @@ admin console never goes on the public internet.
 ## Hard constraints
 
 - Published HTML uses **relative** paths only. Never `href="/..."` or `src="/..."`.
+- This applies to every template, admin included, not just `templates/public/`:
+  `scripts/check_submission.py` greps every tracked `.html` file for `href="/`
+  and `src="/`, so an absolute link in an admin template fails submission too.
 - Never commit `.env`, `*.db`, keys, or tokens. Read secrets from the environment.
 - Passwords are hashed with argon2. Never store or log a plain password.
 - Every state-changing form carries a CSRF token.
