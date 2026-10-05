@@ -9,21 +9,50 @@ them here. Keep this file small.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import PlainTextResponse, RedirectResponse
+from starlette.middleware.sessions import SessionMiddleware
 
-from app import settings
+from app import db, models, settings
+from app.routes import auth
+from app.routes.auth import (
+    AdminRequired,
+    CsrfInvalid,
+    LoginRequired,
+    ensure_csrf_token,
+    get_current_user,
+)
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
 
 def create_app() -> FastAPI:
+    db.init_db()
     app = FastAPI(title="IPHS 400 MP2 CMS")
+    app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY,
+                        session_cookie="cms_session")
+
+    @app.exception_handler(LoginRequired)
+    def _login_required(request: Request, exc: LoginRequired):
+        return RedirectResponse(url="/login", status_code=303)
+
+    @app.exception_handler(AdminRequired)
+    def _admin_required(request: Request, exc: AdminRequired):
+        return PlainTextResponse("Forbidden", status_code=403)
+
+    @app.exception_handler(CsrfInvalid)
+    def _csrf_invalid(request: Request, exc: CsrfInvalid):
+        return PlainTextResponse("Forbidden: missing or invalid CSRF token", status_code=403)
+
+    app.include_router(auth.router)
 
     @app.get("/admin")
-    def admin_home(request: Request):
+    def admin_home(request: Request, user: models.User | None = Depends(get_current_user)):
+        csrf_token = ensure_csrf_token(request) if user else None
         return templates.TemplateResponse(
-            request, "admin/hello.html", {"title": "Admin"}
+            request, "admin/hello.html",
+            {"title": "Admin", "user": user, "csrf_token": csrf_token},
         )
 
     @app.get("/")

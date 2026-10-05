@@ -15,18 +15,30 @@ from __future__ import annotations
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app import db, models  # noqa: E402
+
 
 def main() -> int:
     admin_pw = os.environ.get("CMS_ADMIN_PASSWORD")
     editor_pw = os.environ.get("CMS_EDITOR_PASSWORD")
+    deactivated_pw = os.environ.get("CMS_DEACTIVATED_PASSWORD", "change-me-deactivated")
     if not admin_pw or not editor_pw:
         print("Set CMS_ADMIN_PASSWORD and CMS_EDITOR_PASSWORD in .env "
               "(copy .env.example).")
         return 1
 
-    # TODO (your tickets): create the users, then the demo content.
-    print("Nothing to seed yet: no content types exist. "
-          "Extend scripts/seed_demo.py as you build T01+.")
+    db.init_db()
+    for email, pw, role, name, active in [
+        ("admin@example.test", admin_pw, "admin", "Staff Demo", True),
+        ("editor@example.test", editor_pw, "editor", "Ambassador Demo", True),
+        ("deactivated@example.test", deactivated_pw, "editor", "Deactivated Demo", False),
+    ]:
+        if models.get_user_by_email(email) is None:
+            models.create_user(email=email, password=pw, role=role,
+                                display_name=name, active=active)
+    print("Seeded admin, editor, and deactivated demo users.")
     return 0
 
 

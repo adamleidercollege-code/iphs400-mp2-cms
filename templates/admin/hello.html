@@ -1,5 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
   <h1>T00: hello admin</h1>
-  <p>The stack works. Now build ticket T01.</p>
+  {% if user %}
+    <p>Logged in as {{ user.display_name }} ({{ user.role_label }}).</p>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Log out</button>
+    </form>
+  {% else %}
+    <p>The stack works. Now build ticket T01.</p>
+    <p><a href="/login">Log in</a></p>
+  {% endif %}
 {% endblock %}
