@@ -79,3 +79,16 @@ ts,session,phase,provider,model,effort,ctx_pct,five_h_pct,weekly_pct
 2026-10-05T06:59:35Z,a3824b3c,T02,anthropic,Sonnet 5,medium,24.0,56.99999999999999,42
 2026-10-05T06:59:48Z,a3824b3c,T02,anthropic,Sonnet 5,medium,24.0,56.99999999999999,42
 2026-10-05T19:44:35Z,386af32f,T02,anthropic,Sonnet 5,medium,5.0,5,43
+2026-10-05T19:45:38Z,386af32f,T02,anthropic,Sonnet 5,medium,5.0,5,44
+2026-10-05T19:45:59Z,386af32f,T02,anthropic,Sonnet 5,medium,5.0,5,44
+2026-10-05T19:46:43Z,386af32f,T03,anthropic,Sonnet 5,medium,5.0,6,44
+2026-10-05T19:58:37Z,158f09c3,T03,anthropic,Sonnet 5,medium,12.0,10,44
+2026-10-05T20:29:38Z,158f09c3,T03,anthropic,Sonnet 5,medium,12.0,11,44
+2026-10-05T20:33:33Z,158f09c3,T03,anthropic,Sonnet 5,medium,14.0,13,45
+2026-10-05T20:34:56Z,158f09c3,T03,anthropic,Sonnet 5,medium,15.0,13,45
+2026-10-05T20:36:59Z,158f09c3,T03,anthropic,Sonnet 5,medium,15.0,14.000000000000002,45
+2026-10-05T20:41:16Z,158f09c3,T03,anthropic,Sonnet 5,medium,16.0,16,45
+2026-10-05T20:41:29Z,158f09c3,T03,anthropic,Sonnet 5,medium,16.0,16,45
+2026-10-05T20:46:20Z,158f09c3,T03,anthropic,Sonnet 5,medium,18.0,18,45
+2026-10-05T20:47:40Z,158f09c3,T03,anthropic,Sonnet 5,medium,18.0,18,46
+2026-10-05T20:50:18Z,158f09c3,T03,anthropic,Sonnet 5,medium,20.0,20,46
