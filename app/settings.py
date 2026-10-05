@@ -4,7 +4,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from app.env_file import load_into_environ
+
 ROOT = Path(__file__).resolve().parents[1]
+load_into_environ(ROOT / ".env")  # a real exported env var still always wins
+
 TEMPLATES = ROOT / "templates"
 SITE = ROOT / "site"
 
