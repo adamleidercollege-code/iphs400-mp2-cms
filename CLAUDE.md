@@ -39,6 +39,8 @@ admin console never goes on the public internet.
   starts `T0N:` and ends `Closes #N`.
 - Ask before adding a dependency. The stack in `pyproject.toml` is fixed for this
   project.
+- Code review: use a fresh subagent run in the foreground, not the code-review
+  skill's background fork (it hangs in this setup).
 
 ## Agent skills
 

@@ -40,6 +40,11 @@
 - The "Test" model in the setup row is a fake test row from Oct 1, not real usage. I left it in the ledger rather than edit graded evidence.
 - 16 turns are "unlabelled" because I didn't always set the phase before starting work.
 - Next: trash with restore, scheduled publishing, suggested edits, private messaging, visitor accounts, search filters by views.
+- usage_report.py after T03 (Oct 5, 5 pm):
+  - T01 5% of a 5h window / 1% weekly · T02 17% / 5% · T03 15% / 2%
+  - Avg ~12% of a window and 2.7% weekly per ticket, vs my plan of 30% per ticket. I overestimated by more than half.
+  - T02 cost the most (four review fixes + first deploy). T03's hung review added cost too.
+  - Forecast: 5 tickets need ~13% of the weekly cap, 54% remains → FITS.
 
 ## Real model failures (README needs at least 1)
 - Claude ran the submission checker with the wrong Python, reported a test failure that wasn't real, then caught and corrected it.
