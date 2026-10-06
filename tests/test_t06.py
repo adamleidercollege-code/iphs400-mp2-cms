@@ -87,6 +87,26 @@ def test_deactivation_leaves_pending_and_published_posts_alone(client, role):
     assert published_after.author_id == author.id
 
 
+def test_set_user_role_changes_an_existing_users_role(client):
+    ambassador = models.create_user(
+        email="promote-me@example.test", password="pw",
+        role="editor", display_name="Promote Me",
+    )
+    updated = models.set_user_role(ambassador.id, "admin")
+    assert updated.role == "admin"
+    assert models.get_user_by_id(ambassador.id).role == "admin"
+
+
+def test_set_user_role_rejects_an_invalid_role(client):
+    user = models.create_user(
+        email="bad-role@example.test", password="pw",
+        role="editor", display_name="Bad Role",
+    )
+    with pytest.raises(ValueError):
+        models.set_user_role(user.id, "superadmin")
+    assert models.get_user_by_id(user.id).role == "editor"
+
+
 def test_reactivate_user_restores_active_flag(client):
     ambassador = models.create_user(
         email="back-again@example.test", password="pw",
@@ -150,6 +170,24 @@ def test_staff_deactivates_and_reactivates_a_user(client_as):
     assert models.get_user_by_id(target.id).active is True
 
 
+def test_staff_changes_an_existing_users_role_via_the_edit_screen(client_as):
+    admin_c = client_as("admin")
+    target = models.create_user(
+        email="change-role@example.test", password="pw",
+        role="editor", display_name="Change Role",
+    )
+    edit_page = admin_c.get(f"/admin/accounts/{target.id}/edit")
+    assert edit_page.status_code == 200
+    token = _csrf_token_from(edit_page.text)
+    response = admin_c.post(
+        f"/admin/accounts/{target.id}/edit",
+        data={"role": "admin", "csrf_token": token},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert models.get_user_by_id(target.id).role == "admin"
+
+
 def test_ambassador_is_blocked_from_every_accounts_route(client_as):
     editor_c = client_as("editor")
     target = models.create_user(
@@ -159,10 +197,18 @@ def test_ambassador_is_blocked_from_every_accounts_route(client_as):
     assert editor_c.get("/admin/accounts").status_code == 403
     assert editor_c.get("/admin/accounts/new").status_code == 403
     assert editor_c.post("/admin/accounts/new", data={}).status_code == 403
+    assert editor_c.get(f"/admin/accounts/{target.id}/edit").status_code == 403
+    assert editor_c.post(f"/admin/accounts/{target.id}/edit",
+                          data={"role": "admin"}).status_code == 403
     assert editor_c.post(f"/admin/accounts/{target.id}/deactivate",
                           data={}).status_code == 403
     assert editor_c.post(f"/admin/accounts/{target.id}/reactivate",
                           data={}).status_code == 403
+    # No self-escalation even on their own account.
+    editor = models.get_user_by_email("editor@example.test")
+    assert editor_c.post(f"/admin/accounts/{editor.id}/edit",
+                          data={"role": "admin"}).status_code == 403
+    assert models.get_user_by_id(editor.id).role == "editor"
 
 
 def test_anonymous_request_is_redirected_to_login(client):

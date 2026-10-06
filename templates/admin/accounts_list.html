@@ -7,6 +7,7 @@
       <li>
         {{ u.display_name }} ({{ u.email }}) &mdash; {{ u.role_label }}
         &mdash; {% if u.active %}active{% else %}deactivated{% endif %}
+        <a href="accounts/{{ u.id }}/edit">change role</a>
         {% if u.active %}
           <form method="post" action="accounts/{{ u.id }}/deactivate" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

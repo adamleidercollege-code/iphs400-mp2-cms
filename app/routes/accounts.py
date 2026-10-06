@@ -66,6 +66,33 @@ def new_account_form(request: Request, user: models.User = Depends(require_admin
     return _render_new_form(request, error=None, email="", display_name="", role="editor")
 
 
+@router.get("/{user_id}/edit")
+def edit_account_form(
+    request: Request, user_id: int, user: models.User = Depends(require_admin)
+):
+    target = _get_user_or_404(user_id)
+    token = ensure_csrf_token(request)
+    return templates.TemplateResponse(
+        request, "admin/accounts_edit.html",
+        {"title": "Change role", "csrf_token": token, "target": target,
+         "roles": ROLE_CHOICES},
+    )
+
+
+@router.post("/{user_id}/edit")
+async def update_account_role(
+    user_id: int,
+    role: str = Form(...),
+    user: models.User = Depends(require_admin),
+    _csrf: None = Depends(verify_csrf),
+):
+    _get_user_or_404(user_id)
+    if role not in ROLE_VALUES:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    models.set_user_role(user_id, role)
+    return RedirectResponse(url="/admin/accounts", status_code=303)
+
+
 @router.post("/new")
 async def create_account(
     request: Request,

@@ -84,6 +84,28 @@ def list_users() -> list[User]:
         conn.close()
 
 
+def set_user_role(user_id: int, role: str) -> User:
+    """Change an existing user's role (Staff <-> Ambassador). This is a
+    plain role reassignment, not a deactivation — it never triggers the
+    deactivation cascade, since the user stays active throughout.
+    """
+    if role not in ("admin", "editor"):
+        raise ValueError(f"invalid role: {role!r}")
+    if get_user_by_id(user_id) is None:
+        raise ValueError(f"user {user_id} does not exist")
+    conn = db.get_connection()
+    try:
+        conn.execute(
+            "UPDATE users SET role = ?, "
+            "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?",
+            (role, user_id),
+        )
+        conn.commit()
+        return get_user_by_id(user_id)
+    finally:
+        conn.close()
+
+
 def _set_user_active(user_id: int, active: bool) -> User:
     conn = db.get_connection()
     try:
