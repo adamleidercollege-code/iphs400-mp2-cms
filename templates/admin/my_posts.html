@@ -1,0 +1,28 @@
+{% extends "admin/console_base.html" %}
+{% block console_content %}
+  <h1>My posts</h1>
+  {% for group in groups %}
+    <h2>{{ group.status | capitalize }}</h2>
+    {% if group.rows %}
+      <ul>
+        {% for row in group.rows %}
+          <li>
+            {{ row.post.title }} &mdash; {{ row.program_title }} ({{ row.post.topic }})
+            {% if row.can_edit %}
+              <a href="{{ row.edit_href }}">edit</a>
+              <a href="{{ row.delete_href }}">delete</a>
+            {% endif %}
+            {% for action, label, action_href in row.actions %}
+              <form method="post" action="{{ action_href }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit">{{ label }}</button>
+              </form>
+            {% endfor %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No {{ group.status }} posts yet.</p>
+    {% endif %}
+  {% endfor %}
+{% endblock %}

@@ -1,5 +1,6 @@
 """Staff console shell (T07, #8): the live-preview landing screen, Dashboard,
-Content list, Pending queue, and Metrics.
+Content list, Pending queue, and Metrics. Ambassador console shell (T08, #9):
+the "My posts" landing screen.
 
 Every route but the landing screen is admin-only (require_admin, same gate
 as Pages and Accounts) — an Ambassador gets a 403, an anonymous request is
@@ -8,8 +9,9 @@ routers (app/routes/pages.py, app/routes/accounts.py); this module only adds
 the sidebar entries that point at them.
 
 The landing screen (GET /admin) stays open to any logged-in user: Staff see
-the live preview described below, an Ambassador sees the pre-T08 stub screen
-until "My posts" (T08, #9) replaces it.
+the live preview described below; an Ambassador sees "My posts" — their own
+Posts grouped by status, nothing else — which doubles as their entire
+sidebar (plus logout), since every other console route is admin-only.
 """
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ from fastapi.templating import Jinja2Templates
 from app import models, settings
 from app.routes.auth import ensure_csrf_token, get_current_user, require_admin
 from app.routes.public import page_context
+from app.services import review_gate
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -36,25 +39,61 @@ SIDEBAR = [
     ("/admin/metrics", "Metrics"),
 ]
 
+EDITOR_SIDEBAR = [
+    ("/admin", "My posts"),
+]
 
-def _console_context(request: Request, user: models.User) -> dict:
+
+def _console_context(request: Request, user: models.User, sidebar=None) -> dict:
     return {
         "user": user,
         "csrf_token": ensure_csrf_token(request),
-        "sidebar": [{"href": href, "label": label} for href, label in SIDEBAR],
+        "sidebar": [{"href": href, "label": label} for href, label in (sidebar or SIDEBAR)],
     }
+
+
+def _my_posts_response(request: Request, user: models.User):
+    """An Ambassador's own Posts, grouped by status — nothing belonging to
+    anyone else. A Post is only editable/deletable while draft (same rule
+    app/routes/posts.py enforces), so edit/delete links only render there;
+    `review_gate.available_actions` supplies the rest (submit, for a draft)."""
+    own_posts = models.list_posts_by_author(user.id)
+    groups = []
+    for status in STATUS_CHOICES:
+        rows = []
+        for post in sorted(
+            (p for p in own_posts if p.status == status),
+            key=lambda p: p.updated_at,
+            reverse=True,
+        ):
+            program = models.get_page_by_id(post.program_id)
+            rows.append({
+                "post": post,
+                "program_title": program.title if program else "Unknown program",
+                "edit_href": f"/admin/posts/{post.id}/edit",
+                "delete_href": f"/admin/posts/{post.id}/delete",
+                "can_edit": status == "draft",
+                "actions": [
+                    (action, review_gate.ACTION_LABELS[action], f"/admin/posts/{post.id}/{action}")
+                    for action in review_gate.available_actions(status, user.role, True)
+                ],
+            })
+        groups.append({"status": status, "rows": rows})
+
+    context = _console_context(request, user, sidebar=EDITOR_SIDEBAR)
+    context.update({"title": "My posts", "groups": groups})
+    return templates.TemplateResponse(request, "admin/my_posts.html", context)
 
 
 @router.get("/admin")
 def admin_home(request: Request, user: models.User | None = Depends(get_current_user)):
-    if user is None or user.role != "admin":
-        # Anonymous, or an Ambassador whose own landing screen ("My posts")
-        # is T08's job, not this ticket's.
-        csrf_token = ensure_csrf_token(request) if user else None
+    if user is None:
         return templates.TemplateResponse(
             request, "admin/hello.html",
-            {"title": "Admin", "user": user, "csrf_token": csrf_token},
+            {"title": "Admin", "user": None, "csrf_token": None},
         )
+    if user.role != "admin":
+        return _my_posts_response(request, user)
 
     home_page = models.ensure_home_page()
     context = _console_context(request, user)

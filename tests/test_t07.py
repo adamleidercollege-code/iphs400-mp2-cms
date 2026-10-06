@@ -28,13 +28,6 @@ def test_staff_landing_is_a_live_preview_of_the_published_site(client_as):
     assert "Asia" in response.text
 
 
-def test_ambassador_landing_is_unchanged(client_as):
-    response = client_as("editor").get("/admin")
-    assert response.status_code == 200
-    assert "ambassador demo" in response.text.lower()
-    assert "live preview" not in response.text.lower()
-
-
 # --- Dashboard ---------------------------------------------------------------
 
 
