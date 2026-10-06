@@ -106,6 +106,46 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
           "(draft/pending/published) under the seeded Programs.")
 
 
+def _seed_deactivated_users_with_drafts(programs: list[models.Page]) -> None:
+    """T06 acceptance: one already-deactivated Ambassador and one
+    already-deactivated Staff member, each seeded by creating the account
+    active, giving them a draft Post, and then deactivating them — so the
+    cascade actually runs rather than just hard-coding the end state. The
+    Ambassador's draft is deleted by the cascade; the Staff member's is left
+    in place, same as any other Staff member's unfinished work.
+    """
+    if not programs:
+        print("No programs to seed deactivated-user drafts under, leaving as-is.")
+        return
+    if models.get_user_by_email("deactivated-ambassador@example.test") is not None:
+        print("Deactivated demo users already seeded, leaving as-is.")
+        return
+
+    program = programs[0]
+    ambassador = models.create_user(
+        email="deactivated-ambassador@example.test", password="change-me-deactivated",
+        role="editor", display_name="Former Ambassador",
+    )
+    models.create_post(
+        program_id=program.id, title="Half-finished post", body=_placeholder_body("it"),
+        topic="general", author_id=ambassador.id,
+    )
+    models.deactivate_user(ambassador.id)
+
+    staff = models.create_user(
+        email="deactivated-staff@example.test", password="change-me-deactivated",
+        role="admin", display_name="Former Staff",
+    )
+    models.create_post(
+        program_id=program.id, title="CGE's unfinished draft", body=_placeholder_body("it"),
+        topic="general", author_id=staff.id,
+    )
+    models.deactivate_user(staff.id)
+
+    print("Seeded a deactivated Ambassador (draft deleted by the cascade) and "
+          "a deactivated Staff member (draft left in place).")
+
+
 def main() -> int:
     admin_pw = os.environ.get("CMS_ADMIN_PASSWORD")
     editor_pw = os.environ.get("CMS_EDITOR_PASSWORD")
@@ -130,6 +170,7 @@ def main() -> int:
     editor = models.get_user_by_email("editor@example.test")
     programs = _seed_pages(admin.id)
     _seed_posts(programs, editor.id)
+    _seed_deactivated_users_with_drafts(programs)
     return 0
 
 

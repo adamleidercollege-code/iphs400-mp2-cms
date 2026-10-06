@@ -5,7 +5,7 @@ import sqlite3
 from dataclasses import dataclass
 
 from app import db
-from app.services import passwords, slugs
+from app.services import deactivation, passwords, slugs
 
 
 ROLE_LABELS = {"admin": "Staff", "editor": "Ambassador"}
@@ -73,6 +73,51 @@ def get_user_by_email(email: str) -> User | None:
         return _row_to_user(row) if row else None
     finally:
         conn.close()
+
+
+def list_users() -> list[User]:
+    conn = db.get_connection()
+    try:
+        rows = conn.execute("SELECT * FROM users ORDER BY email").fetchall()
+        return [_row_to_user(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def _set_user_active(user_id: int, active: bool) -> User:
+    conn = db.get_connection()
+    try:
+        conn.execute(
+            "UPDATE users SET active = ?, "
+            "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?",
+            (int(active), user_id),
+        )
+        conn.commit()
+        return get_user_by_id(user_id)
+    finally:
+        conn.close()
+
+
+def deactivate_user(user_id: int) -> User:
+    """Mark the user inactive, applying the role-specific cascade
+    (app.services.deactivation): an Ambassador's draft Posts are deleted; a
+    Staff member's drafts are left exactly as they are. Pending and
+    published Posts are left untouched either way, byline intact.
+    """
+    user = get_user_by_id(user_id)
+    if user is None:
+        raise ValueError(f"user {user_id} does not exist")
+    if deactivation.should_delete_drafts(user.role):
+        for post in list_posts_by_author(user_id):
+            if post.status == "draft":
+                delete_post(post.id)
+    return _set_user_active(user_id, False)
+
+
+def reactivate_user(user_id: int) -> User:
+    if get_user_by_id(user_id) is None:
+        raise ValueError(f"user {user_id} does not exist")
+    return _set_user_active(user_id, True)
 
 
 @dataclass(frozen=True)
@@ -362,6 +407,17 @@ def list_published_posts_by_program(program_id: int) -> list[Post]:
             "SELECT * FROM posts WHERE program_id = ? AND status = 'published' "
             "ORDER BY published_at DESC",
             (program_id,),
+        ).fetchall()
+        return [_row_to_post(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def list_posts_by_author(author_id: int) -> list[Post]:
+    conn = db.get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM posts WHERE author_id = ?", (author_id,)
         ).fetchall()
         return [_row_to_post(r) for r in rows]
     finally:
