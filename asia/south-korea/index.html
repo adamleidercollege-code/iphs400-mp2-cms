@@ -14,7 +14,7 @@
   <header class="site-header">
     <div class="wrap">
       <nav class="site-nav">
-        <a href="../../index.html">Home</a><a href="../../africa/index.html">Africa</a><a href="../../asia/index.html">Asia</a><a href="../../europe/index.html">Europe</a>
+        <a href="../../index.html">Home</a><a href="../../africa/index.html">Africa</a><a href="../../asia/index.html" class="is-active">Asia</a><a href="../../europe/index.html">Europe</a>
       </nav>
     </div>
   </header>
@@ -34,9 +34,12 @@
 
   
   
-    <ul class="card-grid">
+    <ul class="card-grid" id="children">
       
-        <li class="card"><a href="../../asia/south-korea/seoul-studies/index.html">Seoul Studies</a></li>
+        <li class="card">
+          <a href="../../asia/south-korea/seoul-studies/index.html">Seoul Studies</a>
+          <p class="card-desc">Placeholder copy for Seoul Studies . Replace this with real content once CGE has something to say here.</p>
+        </li>
       
     </ul>
   
@@ -45,11 +48,17 @@
 </main>
   <footer class="site-footer">
     <div class="wrap">
-      
-      <nav class="site-footer-nav">
-        <a href="../../about-cge/index.html">About CGE</a><a href="../../contact-us/index.html">Contact Us</a>
-      </nav>
-      
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h2>Kenyon CGE Study Abroad</h2>
+          <p>Dispatches from Kenyon students living and studying abroad — one post at a time.</p>
+        </div>
+        
+        <nav class="site-footer-nav">
+          <a href="../../about-cge/index.html">About CGE</a><a href="../../contact-us/index.html">Contact Us</a>
+        </nav>
+        
+      </div>
       <small class="footer-note">Demo site built for IPHS 400 Mini-Project #2 — not an official Kenyon College page.</small>
     </div>
   </footer>

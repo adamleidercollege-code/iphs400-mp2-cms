@@ -14,7 +14,7 @@
   <header class="site-header">
     <div class="wrap">
       <nav class="site-nav">
-        <a href="index.html">Home</a><a href="africa/index.html">Africa</a><a href="asia/index.html">Asia</a><a href="europe/index.html">Europe</a>
+        <a href="index.html" class="is-active">Home</a><a href="africa/index.html">Africa</a><a href="asia/index.html">Asia</a><a href="europe/index.html">Europe</a>
       </nav>
     </div>
   </header>
@@ -31,19 +31,29 @@
       <div class="wrap">
         <h1>Home</h1>
         <div class="hero-body"></div>
+        <a class="hero-cta" href="#destinations">Browse destinations &rarr;</a>
       </div>
     </section>
   
   <div class="wrap">
   
   
-    <ul class="card-grid">
+    <ul class="card-grid" id="destinations">
       
-        <li class="card"><a href="africa/index.html">Africa</a></li>
+        <li class="card">
+          <a href="africa/index.html">Africa</a>
+          <p class="card-desc">Placeholder copy for Africa . Replace this with real content once CGE has something to say here.</p>
+        </li>
       
-        <li class="card"><a href="asia/index.html">Asia</a></li>
+        <li class="card">
+          <a href="asia/index.html">Asia</a>
+          <p class="card-desc">Placeholder copy for Asia . Replace this with real content once CGE has something to say here.</p>
+        </li>
       
-        <li class="card"><a href="europe/index.html">Europe</a></li>
+        <li class="card">
+          <a href="europe/index.html">Europe</a>
+          <p class="card-desc">Placeholder copy for Europe . Replace this with real content once CGE has something to say here.</p>
+        </li>
       
     </ul>
   
@@ -52,11 +62,17 @@
 </main>
   <footer class="site-footer">
     <div class="wrap">
-      
-      <nav class="site-footer-nav">
-        <a href="about-cge/index.html">About CGE</a><a href="contact-us/index.html">Contact Us</a>
-      </nav>
-      
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h2>Kenyon CGE Study Abroad</h2>
+          <p>Dispatches from Kenyon students living and studying abroad — one post at a time.</p>
+        </div>
+        
+        <nav class="site-footer-nav">
+          <a href="about-cge/index.html">About CGE</a><a href="contact-us/index.html">Contact Us</a>
+        </nav>
+        
+      </div>
       <small class="footer-note">Demo site built for IPHS 400 Mini-Project #2 — not an official Kenyon College page.</small>
     </div>
   </footer>
