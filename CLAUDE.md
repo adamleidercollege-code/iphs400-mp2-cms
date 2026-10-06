@@ -37,6 +37,8 @@ admin console never goes on the public internet.
 - Before a commit that closes a ticket: post the `/code-review` findings, and how
   each was resolved, as a comment on that issue. Then commit with a message that
   starts `T0N:` and ends `Closes #N`.
+- After each ticket's closing commit, push to main immediately and confirm the
+  issue is CLOSED with `gh issue view`.
 - Ask before adding a dependency. The stack in `pyproject.toml` is fixed for this
   project.
 - Code review: use a fresh subagent run in the foreground, not the code-review
