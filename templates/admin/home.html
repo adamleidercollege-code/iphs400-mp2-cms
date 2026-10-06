@@ -1,0 +1,15 @@
+{% extends "admin/console_base.html" %}
+{% block console_content %}
+  <h1>Live preview &mdash; {{ preview.page.title }}</h1>
+  <p>This mirrors what a visitor sees on the public home page right now.</p>
+  <article class="preview-pane">
+    {{ preview.body_html | safe }}
+    {% if preview.children %}
+      <ul>
+        {% for item in preview.children %}
+          <li><a href="{{ item.href }}">{{ item.title }}</a></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </article>
+{% endblock %}

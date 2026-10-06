@@ -1,0 +1,21 @@
+{% extends "admin/console_base.html" %}
+{% block console_content %}
+  <h1>Dashboard</h1>
+
+  <h2>Posts by status</h2>
+  <ul>
+    {% for status, count in status_counts %}
+      <li>{{ status }}: {{ count }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Pages by level</h2>
+  <ul>
+    {% for level, count in level_counts %}
+      <li>{% if level == 0 %}Home{% else %}Level {{ level }}{% endif %}: {{ count }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Accounts</h2>
+  <p>{{ active_accounts }} active account(s).</p>
+{% endblock %}

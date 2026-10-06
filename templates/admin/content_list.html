@@ -1,0 +1,33 @@
+{% extends "admin/console_base.html" %}
+{% block console_content %}
+  <h1>Content</h1>
+  <form method="get" action="/admin/content">
+    <label>
+      Status
+      <select name="status">
+        <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+        {% for choice in status_choices %}
+          <option value="{{ choice }}" {% if status_filter == choice %}selected{% endif %}>{{ choice }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Type
+      <select name="kind">
+        <option value="" {% if not kind_filter %}selected{% endif %}>All</option>
+        {% for value, label in type_choices %}
+          <option value="{{ value }}" {% if kind_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Filter</button>
+  </form>
+  <ul>
+    {% for item in items %}
+      <li>
+        {{ item.kind }} &mdash; <a href="{{ item.href }}">{{ item.title }}</a> ({{ item.status }})
+      </li>
+    {% endfor %}
+  </ul>
+  {% if not items %}<p>No content matches that filter.</p>{% endif %}
+{% endblock %}

@@ -9,22 +9,13 @@ them here. Keep this file small.
 """
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, Request
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import db, models, settings
-from app.routes import accounts, auth, pages, posts, public
-from app.routes.auth import (
-    AdminRequired,
-    CsrfInvalid,
-    LoginRequired,
-    ensure_csrf_token,
-    get_current_user,
-)
-
-templates = Jinja2Templates(directory=str(settings.TEMPLATES))
+from app import db, settings
+from app.routes import accounts, auth, console, pages, posts, public
+from app.routes.auth import AdminRequired, CsrfInvalid, LoginRequired
 
 
 def create_app() -> FastAPI:
@@ -49,22 +40,11 @@ def create_app() -> FastAPI:
     app.include_router(pages.router)
     app.include_router(posts.router)
     app.include_router(accounts.router)
-
-    @app.get("/admin")
-    def admin_home(request: Request, user: models.User | None = Depends(get_current_user)):
-        csrf_token = ensure_csrf_token(request) if user else None
-        return templates.TemplateResponse(
-            request, "admin/hello.html",
-            {"title": "Admin", "user": user, "csrf_token": csrf_token},
-        )
+    app.include_router(console.router)
 
     # Catch-all last: the live public site, read straight from the database —
     # the admin console's "preview" of what `cms publish` will later export.
     app.include_router(public.router)
-
-    # Your ticket work plugs in here, e.g.
-    #   from app.routes import posts
-    #   app.include_router(posts.router)
     return app
 
 

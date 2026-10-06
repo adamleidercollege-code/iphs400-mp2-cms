@@ -1,0 +1,16 @@
+{% extends "admin/console_base.html" %}
+{% block console_content %}
+  <h1>Pending queue</h1>
+  {% if rows %}
+    <ul>
+      {% for row in rows %}
+        <li>
+          <a href="{{ row.edit_href }}">{{ row.post.title }}</a>
+          &mdash; {{ row.author_name }}, submitted {{ row.submitted_date }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nothing is waiting for review.</p>
+  {% endif %}
+{% endblock %}

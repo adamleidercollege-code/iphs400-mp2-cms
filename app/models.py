@@ -435,6 +435,15 @@ def list_published_posts_by_program(program_id: int) -> list[Post]:
         conn.close()
 
 
+def list_all_posts() -> list[Post]:
+    conn = db.get_connection()
+    try:
+        rows = conn.execute("SELECT * FROM posts ORDER BY created_at DESC").fetchall()
+        return [_row_to_post(r) for r in rows]
+    finally:
+        conn.close()
+
+
 def list_posts_by_author(author_id: int) -> list[Post]:
     conn = db.get_connection()
     try:

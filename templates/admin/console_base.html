@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="console">
+    <aside class="console-sidebar">
+      <p>Logged in as {{ user.display_name }} ({{ user.role_label }}).</p>
+      <form method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Log out</button>
+      </form>
+      <nav>
+        <ul>
+          {% for item in sidebar %}
+            <li><a href="{{ item.href }}">{{ item.label }}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+    </aside>
+    <section class="console-main">
+      {% block console_content %}{% endblock %}
+    </section>
+  </div>
+{% endblock %}
