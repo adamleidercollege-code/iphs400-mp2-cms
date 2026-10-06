@@ -12,31 +12,95 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="wrap">
+    <div class="wrap header-inner">
+      <a class="wordmark" href="../../../index.html">Kenyon CGE Study Abroad</a>
       <nav class="site-nav">
         <a href="../../../index.html">Home</a><a href="../../../africa/index.html">Africa</a><a href="../../../asia/index.html" class="is-active">Asia</a><a href="../../../europe/index.html">Europe</a>
       </nav>
     </div>
   </header>
-  
-  <div class="wrap">
-    <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../../../index.html">Home</a> &rsaquo; <a href="../../../asia/index.html">Asia</a> &rsaquo; <a href="../../../asia/south-korea/index.html">South Korea</a> &rsaquo; <a href="../../../asia/south-korea/seoul-studies/index.html">Seoul Studies</a>
-    </nav>
-  </div>
-  
   <main>
   
+    <section class="page-header region-1">
+      <div class="wrap">
+        
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="../../../index.html">Home</a><span class="breadcrumb-sep">/</span><a href="../../../asia/index.html">Asia</a><span class="breadcrumb-sep">/</span><a href="../../../asia/south-korea/index.html">South Korea</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Seoul Studies</span>
+        </nav>
+        
+        <h1 class="page-title">Seoul Studies</h1>
+        <div class="page-desc"><p>Coursework in Korean language and contemporary media runs alongside an internship track — past placements include a webtoon publisher, a language-exchange nonprofit, and a small-batch coffee roaster near Hongdae.</p>
+</div>
+      </div>
+    </section>
+  
   <div class="wrap">
-  
-    <h1 class="page-title">Seoul Studies</h1>
-    <p>Placeholder copy for <strong>Seoul Studies</strong>. Replace this with real content once CGE has something to say here.</p>
-
-  
   
   
     
-      <p>No posts yet.</p>
+      <div class="topic-filters" role="group" aria-label="Filter by Topic">
+        <button type="button" class="topic-pill is-active" data-topic="all">All</button>
+        
+          <button type="button" class="topic-pill" data-topic="social-life">Social Life</button>
+        
+          <button type="button" class="topic-pill" data-topic="other">Other</button>
+        
+      </div>
+      
+        <section class="post-topic-group" data-topic="social-life">
+          <h2>Social Life</h2>
+          <ul class="card-grid">
+            
+              <li class="card post-card">
+                <div class="post-card-top">
+                  <a href="../../../asia/south-korea/seoul-studies/the-weekend-group-chat-seoul-studies/index.html">The weekend group chat — Seoul Studies</a>
+                  <span class="post-topic-badge topic-social-life">Social Life</span>
+                </div>
+                <p class="card-desc">Between classes, Seoul Studies has a surprisingly active group chat — mostly for organizing weekend trips, but also for splitting the cost…</p>
+                <div class="post-card-byline">
+                  <span class="post-avatar">PP</span>
+                  <p class="post-meta">Priya Patel &middot; 2026-10-06</p>
+                </div>
+              </li>
+            
+          </ul>
+        </section>
+      
+        <section class="post-topic-group" data-topic="other">
+          <h2>Other</h2>
+          <ul class="card-grid">
+            
+              <li class="card post-card">
+                <div class="post-card-top">
+                  <a href="../../../asia/south-korea/seoul-studies/odds-and-ends-from-the-first-month-seoul-studies/index.html">Odds and ends from the first month — Seoul Studies</a>
+                  <span class="post-topic-badge topic-other">Other</span>
+                </div>
+                <p class="card-desc">A few things from Seoul Studies that didn&#39;t fit anywhere else: the power adapters everyone forgets, the laundry schedule nobody explains in…</p>
+                <div class="post-card-byline">
+                  <span class="post-avatar">LO</span>
+                  <p class="post-meta">Liam O&#39;Connor &middot; 2026-10-06</p>
+                </div>
+              </li>
+            
+          </ul>
+        </section>
+      
+      <script>
+        (function () {
+          var buttons = document.querySelectorAll(".topic-pill");
+          var groups = document.querySelectorAll(".post-topic-group");
+          buttons.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              buttons.forEach(function (b) { b.classList.remove("is-active"); });
+              btn.classList.add("is-active");
+              var topic = btn.getAttribute("data-topic");
+              groups.forEach(function (g) {
+                g.hidden = topic !== "all" && g.getAttribute("data-topic") !== topic;
+              });
+            });
+          });
+        })();
+      </script>
     
   
   </div>

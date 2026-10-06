@@ -12,31 +12,95 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="wrap">
+    <div class="wrap header-inner">
+      <a class="wordmark" href="../../../index.html">Kenyon CGE Study Abroad</a>
       <nav class="site-nav">
         <a href="../../../index.html">Home</a><a href="../../../africa/index.html">Africa</a><a href="../../../asia/index.html" class="is-active">Asia</a><a href="../../../europe/index.html">Europe</a>
       </nav>
     </div>
   </header>
-  
-  <div class="wrap">
-    <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../../../index.html">Home</a> &rsaquo; <a href="../../../asia/index.html">Asia</a> &rsaquo; <a href="../../../asia/japan/index.html">Japan</a> &rsaquo; <a href="../../../asia/japan/kyoto-exchange/index.html">Kyoto Exchange</a>
-    </nav>
-  </div>
-  
   <main>
   
+    <section class="page-header region-1">
+      <div class="wrap">
+        
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="../../../index.html">Home</a><span class="breadcrumb-sep">/</span><a href="../../../asia/index.html">Asia</a><span class="breadcrumb-sep">/</span><a href="../../../asia/japan/index.html">Japan</a><span class="breadcrumb-sep">/</span><span class="breadcrumb-current">Kyoto Exchange</span>
+        </nav>
+        
+        <h1 class="page-title">Kyoto Exchange</h1>
+        <div class="page-desc"><p>A semester based in the Higashiyama district, split between Japanese-language seminars at a partner university and a weekly fieldwork placement — recent cohorts have worked with a ceramics studio, a city archive, and a neighborhood association planning a summer festival.</p>
+</div>
+      </div>
+    </section>
+  
   <div class="wrap">
-  
-    <h1 class="page-title">Kyoto Exchange</h1>
-    <p>Placeholder copy for <strong>Kyoto Exchange</strong>. Replace this with real content once CGE has something to say here.</p>
-
-  
   
   
     
-      <p>No posts yet.</p>
+      <div class="topic-filters" role="group" aria-label="Filter by Topic">
+        <button type="button" class="topic-pill is-active" data-topic="all">All</button>
+        
+          <button type="button" class="topic-pill" data-topic="meals">Meals</button>
+        
+          <button type="button" class="topic-pill" data-topic="academics">Academics</button>
+        
+      </div>
+      
+        <section class="post-topic-group" data-topic="meals">
+          <h2>Meals</h2>
+          <ul class="card-grid">
+            
+              <li class="card post-card">
+                <div class="post-card-top">
+                  <a href="../../../asia/japan/kyoto-exchange/what-s-actually-on-the-menu-kyoto-exchange/index.html">What&#39;s actually on the menu — Kyoto Exchange</a>
+                  <span class="post-topic-badge topic-meals">Meals</span>
+                </div>
+                <p class="card-desc">Dining through Kyoto Exchange has turned into its own research project. The cafeteria is fine in a pinch, but the real finds have come from…</p>
+                <div class="post-card-byline">
+                  <span class="post-avatar">DR</span>
+                  <p class="post-meta">Diego Ramirez &middot; 2026-10-06</p>
+                </div>
+              </li>
+            
+          </ul>
+        </section>
+      
+        <section class="post-topic-group" data-topic="academics">
+          <h2>Academics</h2>
+          <ul class="card-grid">
+            
+              <li class="card post-card">
+                <div class="post-card-top">
+                  <a href="../../../asia/japan/kyoto-exchange/how-the-coursework-compares-kyoto-exchange/index.html">How the coursework compares — Kyoto Exchange</a>
+                  <span class="post-topic-badge topic-academics">Academics</span>
+                </div>
+                <p class="card-desc">Coursework through Kyoto Exchange runs differently than a Kenyon semester — fewer weekly problem sets, more long-form projects due at the…</p>
+                <div class="post-card-byline">
+                  <span class="post-avatar">AO</span>
+                  <p class="post-meta">Amara Okafor &middot; 2026-10-06</p>
+                </div>
+              </li>
+            
+          </ul>
+        </section>
+      
+      <script>
+        (function () {
+          var buttons = document.querySelectorAll(".topic-pill");
+          var groups = document.querySelectorAll(".post-topic-group");
+          buttons.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              buttons.forEach(function (b) { b.classList.remove("is-active"); });
+              btn.classList.add("is-active");
+              var topic = btn.getAttribute("data-topic");
+              groups.forEach(function (g) {
+                g.hidden = topic !== "all" && g.getAttribute("data-topic") !== topic;
+              });
+            });
+          });
+        })();
+      </script>
     
   
   </div>
