@@ -1,7 +1,18 @@
 {% extends "public/base.html" %}
 {% block content %}
-  <h1>{{ page.title }}</h1>
-  {{ body_html | safe }}
+  {% if page.parent_id is none %}
+    <section class="hero">
+      <div class="wrap">
+        <h1>{{ page.title }}</h1>
+        <div class="hero-body">{{ body_html | safe }}</div>
+      </div>
+    </section>
+  {% endif %}
+  <div class="wrap">
+  {% if page.parent_id is not none %}
+    <h1 class="page-title">{{ page.title }}</h1>
+    {{ body_html | safe }}
+  {% endif %}
   {% if children %}
     <ul class="card-grid">
       {% for item in children %}
@@ -50,4 +61,5 @@
       <p>No posts yet.</p>
     {% endif %}
   {% endif %}
+  </div>
 {% endblock %}

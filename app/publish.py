@@ -20,71 +20,127 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app import models, settings
 from app.services import markdown, post_view
 
-CSS = """/* Kenyon purple, per the T05 design acceptance. */
+CSS = """/* Kenyon purple plus a warm gold accent, per the T10 design pass. */
 :root {
   color-scheme: light dark;
   --purple: #5B2A86;
   --purple-dark: #3E1C5E;
   --purple-light: #F2EBFA;
+  --gold: #C98A3B;
+  --gold-dark: #9C6723;
   --ink: #1F1626;
+  --muted: #5a5064;
   --card-border: #DCCFEA;
+  --paper: #FDFBFE;
 }
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
 body {
-  font: 16px/1.6 system-ui, sans-serif;
-  margin: 0 auto;
-  max-width: 60rem;
-  padding: 0 1rem 2rem;
+  font: 16px/1.65 "Inter", system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
   color: var(--ink);
+  background: var(--paper);
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
 }
+h1, h2, h3 { font-family: "Fraunces", Georgia, serif; line-height: 1.2; }
 a { color: var(--purple-dark); }
-header {
+.wrap {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* -- header / nav -------------------------------------------------- */
+.site-header {
   background: var(--purple);
-  margin: 0 -1rem;
-  padding: 0.75rem 1rem;
+  padding: 1rem 0;
 }
 .site-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
+  gap: 0.5rem 1.5rem;
 }
-.site-nav a { color: #fff; font-weight: 700; text-decoration: none; }
-.site-nav a:hover { text-decoration: underline; }
-main { margin-block: 1.5rem; }
-.breadcrumb { font-size: 0.9rem; margin-block: 1rem; color: #5a5064; }
+.site-nav a { color: #fff; font-weight: 600; text-decoration: none; }
+.site-nav a:hover { color: var(--gold); text-decoration: none; }
+
+.breadcrumb {
+  font-size: 0.9rem;
+  margin-block: 1rem;
+  color: var(--muted);
+}
 .breadcrumb a { color: inherit; }
 
+main { display: block; padding-bottom: 2rem; }
+
+/* -- hero (Home only) ----------------------------------------------- */
+.hero {
+  background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+  color: #fff;
+  padding: 4rem 0 3.5rem;
+  margin-bottom: 2.5rem;
+}
+.hero h1 {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  margin: 0 0 1rem;
+}
+.hero-body {
+  max-width: 42rem;
+  font-size: 1.15rem;
+  color: #EDE3F7;
+}
+.hero-body :first-child { margin-top: 0; }
+
+.page-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  margin: 2rem 0 1rem;
+}
+
+/* -- card grids: Continents, Countries, Programs -------------------- */
 .card-grid {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: 1rem;
-  margin: 1rem 0;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0;
   padding: 0;
 }
 .card {
   border: 1px solid var(--card-border);
-  border-radius: 0.5rem;
-  padding: 1rem;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
   background: var(--purple-light);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.card a { text-decoration: none; font-weight: 700; }
-.post-meta { font-size: 0.85rem; color: #5a5064; margin: 0.35rem 0 0; }
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  box-shadow: 0 8px 20px -10px rgba(31, 22, 38, 0.35);
+}
+.card a {
+  text-decoration: none;
+  font-weight: 600;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.1rem;
+}
+.card a:hover { color: var(--gold-dark); }
+.post-meta { font-size: 0.85rem; color: var(--muted); margin: 0.35rem 0 0; }
 .post-topic-badge {
   display: inline-block;
-  background: var(--purple);
+  background: var(--gold);
   color: #fff;
   border-radius: 999px;
-  padding: 0.15rem 0.75rem;
+  padding: 0.2rem 0.85rem;
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .topic-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 1rem 0;
+  margin: 1.5rem 0;
 }
 .topic-pill {
   border: 1px solid var(--purple);
@@ -95,22 +151,36 @@ main { margin-block: 1.5rem; }
   font: inherit;
   cursor: pointer;
 }
-.topic-pill.is-active { background: var(--purple); color: #fff; }
+.topic-pill.is-active { background: var(--purple); color: #fff; border-color: var(--purple); }
 
-footer {
-  border-top: 1px solid var(--card-border);
+.post-topic-group h2 { margin-top: 2.5rem; }
+
+/* -- a single post --------------------------------------------------- */
+.post h1 { margin-top: 0.75rem; }
+.post-back { margin-top: 2.5rem; }
+
+/* -- footer ----------------------------------------------------------- */
+.site-footer {
+  background: var(--purple-dark);
+  color: #D9CBE8;
   margin-top: 2rem;
-  padding-top: 1rem;
+  padding: 2rem 0 1.5rem;
 }
 .site-footer-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1rem;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1rem;
 }
+.site-footer-nav a { color: #fff; text-decoration: none; }
+.site-footer-nav a:hover { color: var(--gold); }
+.footer-note { color: #B6A3C7; }
 
 @media (max-width: 480px) {
-  .site-nav, .site-footer-nav { flex-direction: column; gap: 0.25rem; }
+  .site-nav, .site-footer-nav { flex-direction: column; gap: 0.5rem; }
   .card-grid { grid-template-columns: 1fr; }
+  .hero { padding: 2.5rem 0; }
+  .wrap { padding: 0 1rem; }
 }
 """
 
