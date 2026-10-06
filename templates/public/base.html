@@ -14,7 +14,7 @@
   <header class="site-header">
     <div class="wrap">
       <nav class="site-nav">
-        {% for item in nav %}<a href="{{ item.href }}">{{ item.title }}</a>{% endfor %}
+        {% for item in nav %}<a href="{{ item.href }}"{% if item.active %} class="is-active"{% endif %}>{{ item.title }}</a>{% endfor %}
       </nav>
     </div>
   </header>
@@ -28,11 +28,17 @@
   <main>{% block content %}{% endblock %}</main>
   <footer class="site-footer">
     <div class="wrap">
-      {% if footer_links %}
-      <nav class="site-footer-nav">
-        {% for item in footer_links %}<a href="{{ item.href }}">{{ item.title }}</a>{% endfor %}
-      </nav>
-      {% endif %}
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h2>Kenyon CGE Study Abroad</h2>
+          <p>Dispatches from Kenyon students living and studying abroad — one post at a time.</p>
+        </div>
+        {% if footer_links %}
+        <nav class="site-footer-nav">
+          {% for item in footer_links %}<a href="{{ item.href }}">{{ item.title }}</a>{% endfor %}
+        </nav>
+        {% endif %}
+      </div>
       <small class="footer-note">Demo site built for IPHS 400 Mini-Project #2 — not an official Kenyon College page.</small>
     </div>
   </footer>

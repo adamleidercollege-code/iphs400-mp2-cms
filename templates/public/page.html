@@ -5,6 +5,7 @@
       <div class="wrap">
         <h1>{{ page.title }}</h1>
         <div class="hero-body">{{ body_html | safe }}</div>
+        {% if children %}<a class="hero-cta" href="#destinations">Browse destinations &rarr;</a>{% endif %}
       </div>
     </section>
   {% endif %}
@@ -14,9 +15,12 @@
     {{ body_html | safe }}
   {% endif %}
   {% if children %}
-    <ul class="card-grid">
+    <ul class="card-grid" id="{% if page.parent_id is none %}destinations{% else %}children{% endif %}">
       {% for item in children %}
-        <li class="card"><a href="{{ item.href }}">{{ item.title }}</a></li>
+        <li class="card">
+          <a href="{{ item.href }}">{% if item.flag %}<span class="card-flag">{{ item.flag }}</span>{% endif %}{{ item.title }}</a>
+          {% if item.excerpt %}<p class="card-desc">{{ item.excerpt }}</p>{% endif %}
+        </li>
       {% endfor %}
     </ul>
   {% endif %}
@@ -34,8 +38,15 @@
           <ul class="card-grid">
             {% for post in posts %}
               <li class="card post-card">
-                <a href="{{ post.href }}">{{ post.title }}</a>
-                <p class="post-meta">{{ post.author_name }} &middot; {{ post.published_date }}</p>
+                <div class="post-card-top">
+                  <a href="{{ post.href }}">{{ post.title }}</a>
+                  <span class="post-topic-badge topic-{{ post.topic_value }}">{{ post.topic_label }}</span>
+                </div>
+                {% if post.excerpt %}<p class="card-desc">{{ post.excerpt }}</p>{% endif %}
+                <div class="post-card-byline">
+                  <span class="post-avatar">{{ post.author_initials }}</span>
+                  <p class="post-meta">{{ post.author_name }} &middot; {{ post.published_date }}</p>
+                </div>
               </li>
             {% endfor %}
           </ul>

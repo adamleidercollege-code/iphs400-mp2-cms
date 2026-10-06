@@ -10,8 +10,22 @@ from __future__ import annotations
 from typing import Callable
 
 from app import models
+from app.services import markdown
 
 TOPIC_LABELS = dict(models.TOPIC_CHOICES)
+
+# Flag emoji for the T11 country-card treatment. Countries Staff add later
+# that aren't listed here just render without a flag (optional per spec).
+COUNTRY_FLAGS = {
+    "Japan": "🇯🇵", "South Korea": "🇰🇷", "Kenya": "🇰🇪", "South Africa": "🇿🇦",
+    "Spain": "🇪🇸", "France": "🇫🇷", "Italy": "🇮🇹", "Germany": "🇩🇪",
+    "United Kingdom": "🇬🇧", "China": "🇨🇳", "India": "🇮🇳", "Brazil": "🇧🇷",
+    "Mexico": "🇲🇽", "Australia": "🇦🇺", "Egypt": "🇪🇬", "Morocco": "🇲🇦",
+    "Ghana": "🇬🇭", "Tanzania": "🇹🇿", "Thailand": "🇹🇭", "Vietnam": "🇻🇳",
+    "Argentina": "🇦🇷", "Chile": "🇨🇱", "Peru": "🇵🇪", "Portugal": "🇵🇹",
+    "Netherlands": "🇳🇱", "Ireland": "🇮🇪", "Greece": "🇬🇷", "Turkey": "🇹🇷",
+    "New Zealand": "🇳🇿", "Indonesia": "🇮🇩", "Jordan": "🇯🇴", "Senegal": "🇸🇳",
+}
 
 
 def _author_name(post: models.Post) -> str:
@@ -24,14 +38,34 @@ def _published_date(post: models.Post) -> str:
     return stamp[:10]
 
 
+def _initials(name: str) -> str:
+    letters = "".join(part[0] for part in name.split()[:2])
+    return letters.upper() or "?"
+
+
 def post_summary(post: models.Post, href: str) -> dict:
+    author_name = _author_name(post)
     return {
         "post": post,
         "href": href,
         "title": post.title,
+        "excerpt": markdown.excerpt(post.body),
+        "topic_value": post.topic,
         "topic_label": TOPIC_LABELS[post.topic],
-        "author_name": _author_name(post),
+        "author_name": author_name,
+        "author_initials": _initials(author_name),
         "published_date": _published_date(post),
+    }
+
+
+def page_card(page: models.Page, href: str, show_flag: bool) -> dict:
+    """A Continent/Country/Program's card on its parent's listing: title,
+    href, and a short description teased from the Page's own body."""
+    return {
+        "title": page.title,
+        "href": href,
+        "excerpt": markdown.excerpt(page.body),
+        "flag": COUNTRY_FLAGS.get(page.title, "") if show_flag else "",
     }
 
 

@@ -54,6 +54,8 @@ def page_context(page: models.Page) -> dict:
     footer_pages = models.list_footer_pages()
     ancestors = [a for a in models.list_ancestors(page) if a.id != page.id]
     children = models.list_published_children(page.id)
+    active_id = models.nav_root_id(page, home)
+    show_flag = models.is_continent_page(page)
 
     post_groups = None
     if models.is_program_page(page):
@@ -66,8 +68,9 @@ def page_context(page: models.Page) -> dict:
     return {
         "page": page,
         "body_html": markdown.render(page.body),
-        "nav": [{"title": home.title, "href": "/"}] + [
-            {"title": c.title, "href": _path_for(c, home)} for c in continents
+        "nav": [{"title": home.title, "href": "/", "active": active_id == home.id}] + [
+            {"title": c.title, "href": _path_for(c, home), "active": active_id == c.id}
+            for c in continents
         ],
         "breadcrumb": [{"title": a.title, "href": _path_for(a, home)} for a in ancestors]
         + [{"title": page.title, "href": _path_for(page, home)}],
@@ -75,7 +78,7 @@ def page_context(page: models.Page) -> dict:
             {"title": f.title, "href": _path_for(f, home)} for f in footer_pages
         ],
         "children": [
-            {"title": c.title, "href": _path_for(c, home)} for c in children
+            post_view.page_card(c, _path_for(c, home), show_flag) for c in children
         ],
         "post_groups": post_groups,
     }
@@ -89,6 +92,7 @@ def post_context(post: models.Post, program: models.Page) -> dict:
     program_href = _path_for(program, home)
     post_href = program_href.rstrip("/") + f"/{post.slug}/"
     summary = post_view.post_summary(post, post_href)
+    active_id = models.nav_root_id(program, home)
 
     return {
         "post": post,
@@ -98,8 +102,9 @@ def post_context(post: models.Post, program: models.Page) -> dict:
         "published_date": summary["published_date"],
         "program_href": program_href,
         "program_title": program.title,
-        "nav": [{"title": home.title, "href": "/"}] + [
-            {"title": c.title, "href": _path_for(c, home)} for c in continents
+        "nav": [{"title": home.title, "href": "/", "active": active_id == home.id}] + [
+            {"title": c.title, "href": _path_for(c, home), "active": active_id == c.id}
+            for c in continents
         ],
         "breadcrumb": [{"title": a.title, "href": _path_for(a, home)} for a in ancestors]
         + [{"title": program.title, "href": program_href},

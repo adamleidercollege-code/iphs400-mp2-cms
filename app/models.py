@@ -486,6 +486,22 @@ def is_program_page(page: Page) -> bool:
     return len(list_ancestors(page)) == 3
 
 
+def is_continent_page(page: Page) -> bool:
+    """A Continent is the Page one level below Home."""
+    return len(list_ancestors(page)) == 1
+
+
+def nav_root_id(page: Page, home: Page) -> int:
+    """Which top-nav item (Home or a Continent) `page` lives under, so the
+    public header can highlight the active one."""
+    if page.id == home.id:
+        return home.id
+    ancestors = list_ancestors(page)
+    if len(ancestors) <= 1:
+        return page.id
+    return ancestors[1].id
+
+
 def create_post(program_id: int, title: str, body: str, topic: str, author_id: int) -> Post:
     program = get_page_by_id(program_id)
     if program is None:
