@@ -491,6 +491,11 @@ def is_continent_page(page: Page) -> bool:
     return len(list_ancestors(page)) == 1
 
 
+def is_country_page(page: Page) -> bool:
+    """A Country is the Page two levels below Home — its children are Programs."""
+    return len(list_ancestors(page)) == 2
+
+
 def nav_root_id(page: Page, home: Page) -> int:
     """Which top-nav item (Home or a Continent) `page` lives under, so the
     public header can highlight the active one."""

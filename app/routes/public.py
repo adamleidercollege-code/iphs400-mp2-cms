@@ -55,7 +55,7 @@ def page_context(page: models.Page) -> dict:
     ancestors = [a for a in models.list_ancestors(page) if a.id != page.id]
     children = models.list_published_children(page.id)
     active_id = models.nav_root_id(page, home)
-    show_flag = models.is_continent_page(page)
+    is_country = models.is_country_page(page)
 
     post_groups = None
     if models.is_program_page(page):
@@ -68,17 +68,21 @@ def page_context(page: models.Page) -> dict:
     return {
         "page": page,
         "body_html": markdown.render(page.body),
+        "region": post_view.region_index(page, home, continents),
         "nav": [{"title": home.title, "href": "/", "active": active_id == home.id}] + [
             {"title": c.title, "href": _path_for(c, home), "active": active_id == c.id}
             for c in continents
         ],
-        "breadcrumb": [{"title": a.title, "href": _path_for(a, home)} for a in ancestors]
-        + [{"title": page.title, "href": _path_for(page, home)}],
+        "breadcrumb": [{"title": a.title, "href": _path_for(a, home)} for a in ancestors],
         "footer_links": [
             {"title": f.title, "href": _path_for(f, home)} for f in footer_pages
         ],
         "children": [
-            post_view.page_card(c, _path_for(c, home), show_flag) for c in children
+            post_view.page_card(
+                c, _path_for(c, home), home, continents,
+                stats=post_view.program_stats(c.id) if is_country else None,
+            )
+            for c in children
         ],
         "post_groups": post_groups,
     }
@@ -107,8 +111,7 @@ def post_context(post: models.Post, program: models.Page) -> dict:
             for c in continents
         ],
         "breadcrumb": [{"title": a.title, "href": _path_for(a, home)} for a in ancestors]
-        + [{"title": program.title, "href": program_href},
-           {"title": post.title, "href": post_href}],
+        + [{"title": program.title, "href": program_href}],
         "footer_links": [
             {"title": f.title, "href": _path_for(f, home)} for f in footer_pages
         ],

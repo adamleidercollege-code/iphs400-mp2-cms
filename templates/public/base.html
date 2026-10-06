@@ -12,19 +12,13 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="wrap">
+    <div class="wrap header-inner">
+      <a class="wordmark" href="{{ nav[0].href }}">Kenyon CGE Study Abroad</a>
       <nav class="site-nav">
         {% for item in nav %}<a href="{{ item.href }}"{% if item.active %} class="is-active"{% endif %}>{{ item.title }}</a>{% endfor %}
       </nav>
     </div>
   </header>
-  {% if breadcrumb %}
-  <div class="wrap">
-    <nav class="breadcrumb" aria-label="Breadcrumb">
-      {% for item in breadcrumb %}<a href="{{ item.href }}">{{ item.title }}</a>{% if not loop.last %} &rsaquo; {% endif %}{% endfor %}
-    </nav>
-  </div>
-  {% endif %}
   <main>{% block content %}{% endblock %}</main>
   <footer class="site-footer">
     <div class="wrap">

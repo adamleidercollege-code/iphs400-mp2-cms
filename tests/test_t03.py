@@ -216,7 +216,11 @@ def test_create_post_requires_a_program_level_page(client_as):
 
 def test_seed_demo_seeds_posts_across_topics(client):
     """Status coverage (draft/pending/published) is T04's acceptance
-    criterion — see tests/test_t04.py; this just covers Topic variety."""
+    criterion — see tests/test_t04.py; this just covers Topic variety.
+
+    T11 follow-up: each Program now gets 3 posts (one from the Ambassador
+    Demo account, two from other fictional Ambassadors) across 3 Topics,
+    not just one post authored solely by the editor."""
     seed_demo = _load_seed_demo()
 
     admin = models.get_user_by_email("admin@example.test")
@@ -225,6 +229,8 @@ def test_seed_demo_seeds_posts_across_topics(client):
     seed_demo._seed_posts(programs, editor.id)
 
     all_posts = [p for program in programs for p in models.list_posts_by_program(program.id)]
-    assert len(all_posts) == len(programs)
-    assert all(p.author_id == editor.id for p in all_posts)
+    assert len(all_posts) == len(programs) * 3
     assert len({p.topic for p in all_posts}) > 1
+    editor_posts = [p for p in all_posts if p.author_id == editor.id]
+    assert len(editor_posts) == len(programs)  # the Ambassador Demo account's own anchor post
+    assert any(p.author_id != editor.id for p in all_posts)  # plus other fictional Ambassadors

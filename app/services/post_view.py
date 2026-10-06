@@ -14,18 +14,9 @@ from app.services import markdown
 
 TOPIC_LABELS = dict(models.TOPIC_CHOICES)
 
-# Flag emoji for the T11 country-card treatment. Countries Staff add later
-# that aren't listed here just render without a flag (optional per spec).
-COUNTRY_FLAGS = {
-    "Japan": "🇯🇵", "South Korea": "🇰🇷", "Kenya": "🇰🇪", "South Africa": "🇿🇦",
-    "Spain": "🇪🇸", "France": "🇫🇷", "Italy": "🇮🇹", "Germany": "🇩🇪",
-    "United Kingdom": "🇬🇧", "China": "🇨🇳", "India": "🇮🇳", "Brazil": "🇧🇷",
-    "Mexico": "🇲🇽", "Australia": "🇦🇺", "Egypt": "🇪🇬", "Morocco": "🇲🇦",
-    "Ghana": "🇬🇭", "Tanzania": "🇹🇿", "Thailand": "🇹🇭", "Vietnam": "🇻🇳",
-    "Argentina": "🇦🇷", "Chile": "🇨🇱", "Peru": "🇵🇪", "Portugal": "🇵🇹",
-    "Netherlands": "🇳🇱", "Ireland": "🇮🇪", "Greece": "🇬🇷", "Turkey": "🇹🇷",
-    "New Zealand": "🇳🇿", "Indonesia": "🇮🇩", "Jordan": "🇯🇴", "Senegal": "🇸🇳",
-}
+# How many distinct region accent colors app/publish.py's CSS defines
+# (.region-0 .. .region-5) — cycles if Staff add a 7th Continent.
+REGION_COUNT = 6
 
 
 def _author_name(post: models.Post) -> str:
@@ -58,14 +49,51 @@ def post_summary(post: models.Post, href: str) -> dict:
     }
 
 
-def page_card(page: models.Page, href: str, show_flag: bool) -> dict:
+def region_index(page: models.Page, home: models.Page, continents: list[models.Page]) -> int | None:
+    """Which Continent's accent color governs `page` — None for Home itself,
+    otherwise the index (mod REGION_COUNT) of the Continent that page lives
+    under (or, if `page` is itself a Continent, its own index). Shared by
+    every card and page-header band so a Continent's whole subtree (its
+    Country and Program pages too) reads in one consistent accent color."""
+    if page.id == home.id:
+        return None
+    root_id = models.nav_root_id(page, home)
+    for i, continent in enumerate(continents):
+        if continent.id == root_id:
+            return i % REGION_COUNT
+    return None
+
+
+def program_stats(program_id: int) -> dict:
+    """Published-post count and the distinct Topic labels present, for a
+    Program's card on its parent Country's listing."""
+    posts = models.list_published_posts_by_program(program_id)
+    topics: list[str] = []
+    seen: set[str] = set()
+    for post in posts:
+        if post.topic not in seen:
+            seen.add(post.topic)
+            topics.append(TOPIC_LABELS[post.topic])
+    return {"post_count": len(posts), "topics": topics}
+
+
+def page_card(
+    page: models.Page,
+    href: str,
+    home: models.Page,
+    continents: list[models.Page],
+    stats: dict | None = None,
+) -> dict:
     """A Continent/Country/Program's card on its parent's listing: title,
-    href, and a short description teased from the Page's own body."""
+    href, a short description teased from the Page's own body, its region
+    accent, and — for a Program card — its post count and Topics."""
     return {
         "title": page.title,
         "href": href,
         "excerpt": markdown.excerpt(page.body),
-        "flag": COUNTRY_FLAGS.get(page.title, "") if show_flag else "",
+        "region": region_index(page, home, continents),
+        "post_count": stats["post_count"] if stats else None,
+        "topics": stats["topics"] if stats else None,
     }
 
 

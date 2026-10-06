@@ -3,23 +3,38 @@
   {% if page.parent_id is none %}
     <section class="hero">
       <div class="wrap">
-        <h1>{{ page.title }}</h1>
-        <div class="hero-body">{{ body_html | safe }}</div>
+        <h1>Study abroad, in Kenyon students&rsquo; own words</h1>
+        <p class="hero-body">Dispatches, photos-in-words, and field notes from Kenyon students on CGE programs around the world.</p>
         {% if children %}<a class="hero-cta" href="#destinations">Browse destinations &rarr;</a>{% endif %}
+      </div>
+    </section>
+  {% else %}
+    <section class="page-header{% if region is not none %} region-{{ region }}{% endif %}">
+      <div class="wrap">
+        {% if breadcrumb %}
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          {% for item in breadcrumb %}<a href="{{ item.href }}">{{ item.title }}</a><span class="breadcrumb-sep">/</span>{% endfor %}<span class="breadcrumb-current">{{ page.title }}</span>
+        </nav>
+        {% endif %}
+        <h1 class="page-title">{{ page.title }}</h1>
+        <div class="page-desc">{{ body_html | safe }}</div>
       </div>
     </section>
   {% endif %}
   <div class="wrap">
-  {% if page.parent_id is not none %}
-    <h1 class="page-title">{{ page.title }}</h1>
-    {{ body_html | safe }}
-  {% endif %}
   {% if children %}
-    <ul class="card-grid" id="{% if page.parent_id is none %}destinations{% else %}children{% endif %}">
+    <ul class="card-grid"{% if page.parent_id is none %} id="destinations"{% endif %}>
       {% for item in children %}
-        <li class="card">
-          <a href="{{ item.href }}">{% if item.flag %}<span class="card-flag">{{ item.flag }}</span>{% endif %}{{ item.title }}</a>
+        <li class="card{% if item.region is not none %} region-{{ item.region }}{% endif %}">
+          <a class="card-link" href="{{ item.href }}">{{ item.title }}</a>
           {% if item.excerpt %}<p class="card-desc">{{ item.excerpt }}</p>{% endif %}
+          {% if item.post_count is not none %}
+            <div class="card-stats">
+              <span class="card-stat-count">{{ item.post_count }} post{{ "s" if item.post_count != 1 else "" }}</span>
+              {% for topic in item.topics %}<span class="card-stat-topic">{{ topic }}</span>{% endfor %}
+            </div>
+          {% endif %}
+          <span class="card-cta">Explore &rarr;</span>
         </li>
       {% endfor %}
     </ul>

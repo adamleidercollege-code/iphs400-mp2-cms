@@ -260,6 +260,10 @@ def test_unpublish_clears_published_at(client_as):
 
 
 def test_seed_demo_seeds_posts_in_all_three_statuses(client):
+    """T11 follow-up: each Program gets 3 posts now (see test_t03.py), but
+    the two extra fictional-Ambassador posts are always published — only the
+    Ambassador Demo account's own anchor post cycles through all three
+    statuses, so the full set still covers draft/pending/published."""
     seed_demo = _load_seed_demo()
     admin = models.get_user_by_email("admin@example.test")
     editor = models.get_user_by_email("editor@example.test")
@@ -267,6 +271,8 @@ def test_seed_demo_seeds_posts_in_all_three_statuses(client):
     seed_demo._seed_posts(programs, editor.id)
 
     all_posts = [p for program in programs for p in models.list_posts_by_program(program.id)]
-    assert len(all_posts) == len(programs)
+    assert len(all_posts) == len(programs) * 3
     assert {p.status for p in all_posts} == {"draft", "pending", "published"}
     assert len({p.topic for p in all_posts}) > 1
+    published = [p for p in all_posts if p.status == "published"]
+    assert len(published) >= len(programs) * 2  # the two fictional-Ambassador posts, always published
