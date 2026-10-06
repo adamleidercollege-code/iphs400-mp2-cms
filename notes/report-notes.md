@@ -66,5 +66,20 @@
 - /code-review's background fork hung for 36+ minutes; had to stop it. Claude then reviewed its own diff, which breaks the "reviewer ≠ author" rule.
 - Had it retry with a fresh, independent subagent. That finished in ~2 min, found no bugs, and flagged one UX nitpick (the new-post form opened under a continent/country page only errors on Save). I fixed it because I didn't want the user having to go through the extra effort and annoyance of writing their whole post only to realize it was in the wrong location at the end.
 
+## T04 (#5)
+- Built the review gate: draft → pending → published, with Staff able to publish their own drafts directly and Ambassadors needing review. 103 tests passing.
+- Review (high effort) caught a race condition: two Staff acting on the same pending post at once could silently overwrite each other. Fixed so the second one gets an error. Very relevant for CGE, where several staff could open the pending queue at once.
+- Also caught: the status rules written in two places (could drift apart), and unpublishing kept the old "published on" date.
+- The background /code-review didn't hang this time but I was ready to rerun it in the foreground. Added a CLAUDE.md rule to always use a foreground subagent for reviews.
+- My comment on #5 was my 3rd own-words comment (A5 needs 3).
+
+## T05 (#6)
+
+- The T05 design was built but never went live: my deploy command silently stopped because seed_demo.py couldn't read .env (nothing loaded it). Caught only by checking the live site. That also would have broken the grader's clean-clone setup. Fixed by making the scripts load .env themselves.
+
 ## Lesson
 - T01's review findings were fixed and posted without me weighing in. From T02 on, I read the findings and replied in my own words on the issue.
+
+## Problem note
+
+- Oct 6: local git database got corrupted (empty object files, probably from one of the crashes/force-closes). Everything was on GitHub, so I re-cloned and copied over the unpushed transcripts and ledger. Also found two Claude sessions had run in the Orca worktree and saved misnamed transcripts there.
