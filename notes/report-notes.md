@@ -13,12 +13,18 @@
 ## Q2: Drift (what the AI made up + what caught it)
 - Spec #1: Claude filled in decisions I never made (slug -2/-3 suffixes, Staff can't publish others' drafts directly, Staff drafts deleted on deactivation). Caught by reading the spec before tickets.
 - T01 (#2): code showed raw role codes "admin/editor" in the UI instead of Staff/Ambassador from CONTEXT.md. Caught by /code-review. Fixed with User.role_label.
+- Design passes (T11): Claude started calling posts "dispatches" in the hero, footer and headings. Not in CONTEXT.md, where the term is "Post". I caught it by reading the live site and had it changed to match the glossary.
 
 ## Q3: Skills, prompts, resources
 - Skills: /grill-with-docs, /to-spec, /to-tickets, /implement, /tdd, /code-review, /setup-matt-pocock-skills
-- Prompts I actually used (need 2 quoted for README):
-  - The /grill-with-docs prompt for the CGE study abroad blog
-  - My test-seams answer asking for a services layer for slug, status, and deactivation rules
+
+- Prompts I actually used (quote these word for word in the README):
+  - Prompt 1 (grill answer A3, my own words):
+    "A CGE staff member should be able to write posts as well if they desire, they should possess all the tools that the ambassador role provides. The role names can be staff and ambassador."
+  - Prompt 2 (test seams, before /to-spec):
+    "Those two seams match was I was expecting, but could you also do a third one: a small services layer for the pure rules like slug generation, the status transitions (who can move a post from a draft to pending to published and back), and what happens to an ambassadors posts when they're deactivated. Those rules are really the core of how the CGE's review works, so I want them to be tested directly as opposed to only through HTTP, and this will keep the code splits into models, routes, templates, and services."
+  - How I started: the /grill-with-docs kickoff for the CGE study abroad blog (mostly drafted with help).
+  - TODO: check both quotes against docs/transcripts/ to make sure they match exactly what I sent.
 
 ## Q4: Budget + what I'd add next
 - Plan said opusplan/Opus high for grill/spec/tickets. Ledger shows it ran on Sonnet 5 high. I believe my computer restarted and I forgot to shift the model back when I began again.
@@ -49,6 +55,10 @@
 ## Real model failures (README needs at least 1)
 - Claude ran the submission checker with the wrong Python, reported a test failure that wasn't real, then caught and corrected it.
 - /setup-matt-pocock-skills skipped creating the spec/ticket/stretch labels the project needed.
+- /code-review's background fork hung 36+ min (T03); Claude then reviewed its own code. Rerunning with a fresh foreground subagent fixed it.
+- A /loop wakeup kept re-firing after tickets were done, re-prompting Claude for nothing.
+- Claude committed T07 but didn't push, so issue #8 stayed open. Added a CLAUDE.md rule to push and confirm CLOSED.
+- Claude said it couldn't take screenshots until I had it install Playwright.
 
 ## Things that went wrong (good for report voice)
 - Grill session crashed twice; recovered with claude --resume / fg after accidentally hitting Ctrl+Z.
@@ -76,6 +86,31 @@
 ## T05 (#6)
 
 - The T05 design was built but never went live: my deploy command silently stopped because seed_demo.py couldn't read .env (nothing loaded it). Caught only by checking the live site. That also would have broken the grader's clean-clone setup. Fixed by making the scripts load .env themselves.
+- Built public posts on program pages (grouped by topic, with a filter) plus the first Kenyon-purple design, which I added to the ticket myself after the plain first deploy.
+- Review flagged an out-of-scope gap: the admin preview could show a published post under a draft program. I left it as-is because only CGE Staff can see the preview, and the real public site already hides anything under an unpublished program.
+
+## T06 (#7)
+- Built the Staff-only Accounts tab: create users, deactivate/reactivate, plus my deactivation rules (Ambassador drafts deleted; pending/published kept; Staff drafts kept). Seed data shows both cases.
+- Review (fresh foreground subagent) found no blocking issues.
+- Gap the review missed: there was no way to CHANGE an existing user's role, which the rubric requires (C6). I caught it by checking the summary against the rubric. Added it as a "T06 follow-up" commit with 3 tests, including one proving an Ambassador can't promote themselves to Staff.
+- 135 tests passing.
+
+## T07 (#8)
+- Built the Staff console the way I designed it in the grill (A12): site preview as the Staff home screen, sidebar with Dashboard, Pending queue, Accounts, Page hierarchy, Metrics. Metrics = posts per program, including programs with zero posts, so CGE can see where they need ambassadors.
+- Biggest ticket so far (~25 min). Review subagent took ~4 min and found no bugs, two minor notes.
+- 145 tests passing.
+
+## T08 (#9)
+- Ambassador "My posts" screen: their own posts grouped by draft/pending/published, a sidebar with only "My posts", 403 on every Staff page.
+- Claude removed a T07 test assertion that checked the old Ambassador landing page. Legit, since T08 replaced that page, but worth noting that tests changed.
+- Review found no bugs. 150 tests passing. All 8 core tickets done.
+
+## T10 (#11) + T11 (#12): design
+- My own ticket, added after T05: the site was purple but narrow and plain. Full-width layout, home hero, card grids, Kenyon purple + gold, Fraunces/Inter fonts, footer disclaimer that it's a demo, not an official Kenyon page.
+- Review found no bugs, two small nits fixed. 150 tests passing.
+- First design pass was generic. I pushed for a second pass with a concrete "travel magazine" direction.
+- Claude said it couldn't screenshot; I had it install Playwright and write scripts/screenshot.py so it could actually look at its work. The screenshots caught a real bug (topic badges squished into blobs at 1280px).
+- Relabeled both as stretch to keep core tickets at 8.
 
 ## Lesson
 - T01's review findings were fixed and posted without me weighing in. From T02 on, I read the findings and replied in my own words on the issue.
@@ -83,3 +118,20 @@
 ## Problem note
 
 - Oct 6: local git database got corrupted (empty object files, probably from one of the crashes/force-closes). Everything was on GitHub, so I re-cloned and copied over the unpushed transcripts and ledger. Also found two Claude sessions had run in the Orca worktree and saved misnamed transcripts there.
+
+## Design notes
+
+- Design round 2 (T11 follow-up): I reviewed the live site myself and found dead About/Contact links (a real broken-link bug), program pages with "No posts yet", leftover placeholder text, a footer floating mid-page, and flags rendering as "JP"/"KR" on Windows. All fixed, plus a link-crawler test. Two review rounds each caught more issues.
+- Lesson: tests and reviews passed while the site still had obvious problems. Only looking at it myself caught them.
+- Drift: during the design passes Claude started calling posts "dispatches" (hero, footer, headings). Not in CONTEXT.md, where the term is "Post". I caught it reading the live site and had it changed back.
+- Final design pass on Opus (high): fixed dead space, About/Contact layouts, richer post pages, breadcrumbs. Hit my 5h limit mid-review (HTTP 429), then my computer restarted with the work uncommitted. Nothing lost; switched back to Sonnet to test, review, commit and deploy.
+- The review caught a real bug: a continent marked "show in footer" would silently vanish from the nav.
+- Claude changed 4 older test files; I made it justify each. They only tracked renamed demo authors, and no checks were weakened.
+- I removed the "dispatch" strips from Home, continent, country and About/Contact pages (felt gimmicky); kept posts on program pages and "More from [Program]" on posts.
+
+## Stage 1 (Oct 5)
+- check_submission flagged admin templates using "/..." links (fixed), the missing mp2-mvp tag (tagged), and "secrets in history": 2 false positives inside transcripts, not real keys. Didn't rewrite history; explained it in my Stage 1 email.
+
+## Placeholder slot
+- Final usage_report.py (after the last deploy): PASTE HERE
+- The Opus design pass hit my 5h limit. Opus has better design taste but burns the window much faster than Sonnet.
