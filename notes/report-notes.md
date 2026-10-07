@@ -123,7 +123,7 @@
 
 - Design round 2 (T11 follow-up): I reviewed the live site myself and found dead About/Contact links (a real broken-link bug), program pages with "No posts yet", leftover placeholder text, a footer floating mid-page, and flags rendering as "JP"/"KR" on Windows. All fixed, plus a link-crawler test. Two review rounds each caught more issues.
 - Lesson: tests and reviews passed while the site still had obvious problems. Only looking at it myself caught them.
-- Drift: during the design passes Claude started calling posts "dispatches" (hero, footer, headings). Not in CONTEXT.md, where the term is "Post". I caught it reading the live site and had it changed back.
+- Drift: during the design passes Claude started calling posts "dispatches" (hero, footer, headings). Not in CONTEXT.md, where the term is "Post". I flagged it; in the final pass Claude spotted my note and asked before renaming everything to "posts".
 - Final design pass on Opus (high): fixed dead space, About/Contact layouts, richer post pages, breadcrumbs. Hit my 5h limit mid-review (HTTP 429), then my computer restarted with the work uncommitted. Nothing lost; switched back to Sonnet to test, review, commit and deploy.
 - The review caught a real bug: a continent marked "show in footer" would silently vanish from the nav.
 - Claude changed 4 older test files; I made it justify each. They only tracked renamed demo authors, and no checks were weakened.
