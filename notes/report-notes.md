@@ -14,6 +14,7 @@
 - Spec #1: Claude filled in decisions I never made (slug -2/-3 suffixes, Staff can't publish others' drafts directly, Staff drafts deleted on deactivation). Caught by reading the spec before tickets.
 - T01 (#2): code showed raw role codes "admin/editor" in the UI instead of Staff/Ambassador from CONTEXT.md. Caught by /code-review. Fixed with User.role_label.
 - Design passes (T11): Claude started calling posts "dispatches" in the hero, footer and headings. Not in CONTEXT.md, where the term is "Post". I caught it by reading the live site and had it changed to match the glossary.
+- The admin console had never loaded its stylesheet (relative "style.css" 404'd on every nested admin page). Every ticket's tests and reviews passed anyway; it was only caught when taking the required screenshots. Fixed under its own issue, #13.
 
 ## Q3: Skills, prompts, resources
 - Skills: /grill-with-docs, /to-spec, /to-tickets, /implement, /tdd, /code-review, /setup-matt-pocock-skills
@@ -59,6 +60,7 @@
 - A /loop wakeup kept re-firing after tickets were done, re-prompting Claude for nothing.
 - Claude committed T07 but didn't push, so issue #8 stayed open. Added a CLAUDE.md rule to push and confirm CLOSED.
 - Claude said it couldn't take screenshots until I had it install Playwright.
+- While verifying flash messages, Claude created a stray "Flash Test" account in my real local demo database instead of a test copy. It caught and deleted it before the screenshots.
 
 ## Things that went wrong (good for report voice)
 - Grill session crashed twice; recovered with claude --resume / fg after accidentally hitting Ctrl+Z.
@@ -128,6 +130,7 @@
 - The review caught a real bug: a continent marked "show in footer" would silently vanish from the nav.
 - Claude changed 4 older test files; I made it justify each. They only tracked renamed demo authors, and no checks were weakened.
 - I removed the "dispatch" strips from Home, continent, country and About/Contact pages (felt gimmicky); kept posts on program pages and "More from [Program]" on posts.
+- Same lesson again: the admin console was unstyled the whole project and nobody, me included, noticed until the screenshot step (#13).
 
 ## Stage 1 (Oct 5)
 - check_submission flagged admin templates using "/..." links (fixed), the missing mp2-mvp tag (tagged), and "secrets in history": 2 false positives inside transcripts, not real keys. Didn't rewrite history; explained it in my Stage 1 email.
