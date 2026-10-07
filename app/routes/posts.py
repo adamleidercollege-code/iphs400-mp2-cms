@@ -13,11 +13,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
 
 from app import models, settings
-from app.routes.auth import ensure_csrf_token, require_user, verify_csrf
-from app.services import markdown, review_gate
+from app.routes.auth import require_user, verify_csrf
+from app.services import console_shell, markdown, review_gate
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -72,6 +71,7 @@ def _apply_transition(user: models.User, post: models.Post, action: str) -> mode
 
 def _render_form(
     request: Request,
+    user: models.User,
     post: models.Post | None,
     program: models.Page,
     error: str | None = None,
@@ -79,22 +79,19 @@ def _render_form(
     body: str = "",
     topic: str = "general",
 ):
-    token = ensure_csrf_token(request)
-    return templates.TemplateResponse(
-        request, "admin/posts_form.html",
-        {
-            "title": "Edit post" if post else "New post",
-            "post": post,
-            "program": program,
-            "csrf_token": token,
-            "error": error,
-            "form_title": title,
-            "form_body": body,
-            "form_topic": topic,
-            "preview_html": markdown.render(body),
-            "topics": models.TOPIC_CHOICES,
-        },
-    )
+    context = console_shell.console_context(request, user)
+    context.update({
+        "title": "Edit post" if post else "New post",
+        "post": post,
+        "program": program,
+        "error": error,
+        "form_title": title,
+        "form_body": body,
+        "form_topic": topic,
+        "preview_html": markdown.render(body),
+        "topics": models.TOPIC_CHOICES,
+    })
+    return templates.TemplateResponse(request, "admin/posts_form.html", context)
 
 
 @router.get("")
@@ -105,7 +102,6 @@ def list_posts(
     posts = models.list_posts_by_program(program_id)
     if user.role != "admin":
         posts = [p for p in posts if p.author_id == user.id]
-    token = ensure_csrf_token(request)
     posts_with_actions = [
         (
             post,
@@ -118,11 +114,10 @@ def list_posts(
         )
         for post in posts
     ]
-    return templates.TemplateResponse(
-        request, "admin/posts_list.html",
-        {"title": "Posts", "program": program, "posts_with_actions": posts_with_actions,
-         "csrf_token": token},
-    )
+    context = console_shell.console_context(request, user)
+    context.update({"title": "Posts", "program": program,
+                     "posts_with_actions": posts_with_actions})
+    return templates.TemplateResponse(request, "admin/posts_list.html", context)
 
 
 @router.get("/new")
@@ -130,7 +125,7 @@ def new_post_form(
     request: Request, program_id: int, user: models.User = Depends(require_user)
 ):
     program = _get_program_or_404(program_id)
-    return _render_form(request, post=None, program=program)
+    return _render_form(request, user, post=None, program=program)
 
 
 @router.post("/new")
@@ -146,19 +141,20 @@ async def create_post(
 ):
     program = _get_program_or_404(program_id)
     if action == "preview":
-        return _render_form(request, post=None, program=program,
+        return _render_form(request, user, post=None, program=program,
                              title=title, body=body, topic=topic)
     if not title.strip():
-        return _render_form(request, post=None, program=program,
+        return _render_form(request, user, post=None, program=program,
                              error="Title is required.", title=title, body=body, topic=topic)
     try:
         models.create_post(
             program_id=program_id, title=title, body=body, topic=topic, author_id=user.id,
         )
     except ValueError as exc:
-        return _render_form(request, post=None, program=program,
+        return _render_form(request, user, post=None, program=program,
                              error=str(exc), title=title, body=body, topic=topic)
-    return RedirectResponse(url=f"/admin/posts?program_id={program_id}", status_code=303)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts?program_id={program_id}", "Post created.")
 
 
 @router.get("/{post_id}/edit")
@@ -168,7 +164,7 @@ def edit_post_form(
     post = _get_post_or_404(post_id)
     _authorize_post_write(user, post)
     program = _get_program_or_404(post.program_id)
-    return _render_form(request, post=post, program=program,
+    return _render_form(request, user, post=post, program=program,
                          title=post.title, body=post.body, topic=post.topic)
 
 
@@ -187,17 +183,18 @@ async def update_post(
     _authorize_post_write(user, post)
     program = _get_program_or_404(post.program_id)
     if action == "preview":
-        return _render_form(request, post=post, program=program,
+        return _render_form(request, user, post=post, program=program,
                              title=title, body=body, topic=topic)
     if not title.strip():
-        return _render_form(request, post=post, program=program,
+        return _render_form(request, user, post=post, program=program,
                              error="Title is required.", title=title, body=body, topic=topic)
     try:
         models.update_post(post_id, title=title, body=body, topic=topic)
     except ValueError as exc:
-        return _render_form(request, post=post, program=program,
+        return _render_form(request, user, post=post, program=program,
                              error=str(exc), title=title, body=body, topic=topic)
-    return RedirectResponse(url=f"/admin/posts?program_id={program.id}", status_code=303)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts?program_id={program.id}", "Post saved.")
 
 
 @router.get("/{post_id}/delete")
@@ -206,11 +203,9 @@ def confirm_delete_post(
 ):
     post = _get_post_or_404(post_id)
     _authorize_post_write(user, post)
-    token = ensure_csrf_token(request)
-    return templates.TemplateResponse(
-        request, "admin/posts_delete.html",
-        {"title": "Delete post?", "post": post, "csrf_token": token},
-    )
+    context = console_shell.console_context(request, user)
+    context.update({"title": "Delete post?", "post": post})
+    return templates.TemplateResponse(request, "admin/posts_delete.html", context)
 
 
 @router.post("/{post_id}/delete")
@@ -222,7 +217,8 @@ async def delete_post(
     _authorize_post_write(user, post)
     program_id = post.program_id
     models.delete_post(post_id)
-    return RedirectResponse(url=f"/admin/posts?program_id={program_id}", status_code=303)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts?program_id={program_id}", "Post deleted.")
 
 
 @router.post("/{post_id}/submit")
@@ -232,7 +228,8 @@ async def submit_post(
 ):
     post = _get_post_or_404(post_id)
     _apply_transition(user, post, "submit")
-    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts?program_id={post.program_id}", "Post submitted for review.")
 
 
 @router.post("/{post_id}/publish")
@@ -242,7 +239,8 @@ async def publish_post(
 ):
     post = _get_post_or_404(post_id)
     _apply_transition(user, post, "publish")
-    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts?program_id={post.program_id}", "Post published.")
 
 
 @router.post("/{post_id}/bounce")
@@ -252,7 +250,8 @@ async def bounce_post(
 ):
     post = _get_post_or_404(post_id)
     _apply_transition(user, post, "bounce")
-    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts?program_id={post.program_id}", "Post sent back to draft.")
 
 
 @router.post("/{post_id}/unpublish")
@@ -262,4 +261,5 @@ async def unpublish_post(
 ):
     post = _get_post_or_404(post_id)
     _apply_transition(user, post, "unpublish")
-    return RedirectResponse(url=f"/admin/posts?program_id={post.program_id}", status_code=303)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts?program_id={post.program_id}", "Post unpublished.")

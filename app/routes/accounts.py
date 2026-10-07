@@ -12,10 +12,10 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
 
 from app import models, settings
-from app.routes.auth import ensure_csrf_token, require_admin, verify_csrf
+from app.routes.auth import require_admin, verify_csrf
+from app.services import console_shell
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -33,37 +33,33 @@ def _get_user_or_404(user_id: int) -> models.User:
 
 
 def _render_new_form(
-    request: Request, error: str | None, email: str, display_name: str, role: str,
-    status_code: int = 200,
+    request: Request, user: models.User, error: str | None, email: str,
+    display_name: str, role: str, status_code: int = 200,
 ):
-    token = ensure_csrf_token(request)
+    context = console_shell.console_context(request, user)
+    context.update({
+        "title": "New account",
+        "error": error,
+        "roles": ROLE_CHOICES,
+        "form_email": email,
+        "form_display_name": display_name,
+        "form_role": role,
+    })
     return templates.TemplateResponse(
-        request, "admin/accounts_form.html",
-        {
-            "title": "New account",
-            "csrf_token": token,
-            "error": error,
-            "roles": ROLE_CHOICES,
-            "form_email": email,
-            "form_display_name": display_name,
-            "form_role": role,
-        },
-        status_code=status_code,
+        request, "admin/accounts_form.html", context, status_code=status_code,
     )
 
 
 @router.get("")
 def list_accounts(request: Request, user: models.User = Depends(require_admin)):
-    token = ensure_csrf_token(request)
-    return templates.TemplateResponse(
-        request, "admin/accounts_list.html",
-        {"title": "Accounts", "users": models.list_users(), "csrf_token": token},
-    )
+    context = console_shell.console_context(request, user)
+    context.update({"title": "Accounts", "users": models.list_users()})
+    return templates.TemplateResponse(request, "admin/accounts_list.html", context)
 
 
 @router.get("/new")
 def new_account_form(request: Request, user: models.User = Depends(require_admin)):
-    return _render_new_form(request, error=None, email="", display_name="", role="editor")
+    return _render_new_form(request, user, error=None, email="", display_name="", role="editor")
 
 
 @router.get("/{user_id}/edit")
@@ -71,12 +67,9 @@ def edit_account_form(
     request: Request, user_id: int, user: models.User = Depends(require_admin)
 ):
     target = _get_user_or_404(user_id)
-    token = ensure_csrf_token(request)
-    return templates.TemplateResponse(
-        request, "admin/accounts_edit.html",
-        {"title": "Change role", "csrf_token": token, "target": target,
-         "roles": ROLE_CHOICES},
-    )
+    context = console_shell.console_context(request, user)
+    context.update({"title": "Change role", "target": target, "roles": ROLE_CHOICES})
+    return templates.TemplateResponse(request, "admin/accounts_edit.html", context)
 
 
 @router.post("/{user_id}/edit")
@@ -90,7 +83,7 @@ async def update_account_role(
     if role not in ROLE_VALUES:
         raise HTTPException(status_code=400, detail="Invalid role")
     models.set_user_role(user_id, role)
-    return RedirectResponse(url="/admin/accounts", status_code=303)
+    return console_shell.redirect_with_flash("/admin/accounts", "Role updated.")
 
 
 @router.post("/new")
@@ -107,7 +100,7 @@ async def create_account(
         raise HTTPException(status_code=400, detail="Invalid role")
     if not email.strip() or not display_name.strip() or not password:
         return _render_new_form(
-            request, error="Email, display name, and password are all required.",
+            request, user, error="Email, display name, and password are all required.",
             email=email, display_name=display_name, role=role, status_code=400,
         )
     try:
@@ -116,10 +109,10 @@ async def create_account(
         )
     except sqlite3.IntegrityError:
         return _render_new_form(
-            request, error="An account with that email already exists.",
+            request, user, error="An account with that email already exists.",
             email=email, display_name=display_name, role=role, status_code=400,
         )
-    return RedirectResponse(url="/admin/accounts", status_code=303)
+    return console_shell.redirect_with_flash("/admin/accounts", "Account created.")
 
 
 @router.post("/{user_id}/deactivate")
@@ -129,7 +122,7 @@ async def deactivate_account(
 ):
     _get_user_or_404(user_id)
     models.deactivate_user(user_id)
-    return RedirectResponse(url="/admin/accounts", status_code=303)
+    return console_shell.redirect_with_flash("/admin/accounts", "Account deactivated.")
 
 
 @router.post("/{user_id}/reactivate")
@@ -139,4 +132,4 @@ async def reactivate_account(
 ):
     _get_user_or_404(user_id)
     models.reactivate_user(user_id)
-    return RedirectResponse(url="/admin/accounts", status_code=303)
+    return console_shell.redirect_with_flash("/admin/accounts", "Account reactivated.")

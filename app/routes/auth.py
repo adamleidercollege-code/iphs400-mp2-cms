@@ -12,6 +12,7 @@ from fastapi.responses import RedirectResponse
 
 from app import models, settings
 from app.services import csrf, passwords
+from app.services.css_path import css_path_for
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -77,7 +78,8 @@ def login_form(request: Request):
     token = ensure_csrf_token(request)
     return templates.TemplateResponse(
         request, "admin/login.html",
-        {"title": "Log in", "csrf_token": token, "error": None},
+        {"title": "Log in", "csrf_token": token, "error": None,
+         "css_path": css_path_for(request)},
     )
 
 
@@ -97,7 +99,8 @@ async def login_submit(
         token = ensure_csrf_token(request)
         return templates.TemplateResponse(
             request, "admin/login.html",
-            {"title": "Log in", "csrf_token": token, "error": GENERIC_LOGIN_ERROR},
+            {"title": "Log in", "csrf_token": token, "error": GENERIC_LOGIN_ERROR,
+             "css_path": css_path_for(request)},
             status_code=401,
         )
 
@@ -116,5 +119,6 @@ async def logout(request: Request, _csrf: None = Depends(verify_csrf)):
 @router.get("/admin/_stub")
 def admin_only_stub(request: Request, user: models.User = Depends(require_admin)):
     return templates.TemplateResponse(
-        request, "admin/stub.html", {"title": "Admin-only stub", "user": user},
+        request, "admin/stub.html",
+        {"title": "Admin-only stub", "user": user, "css_path": css_path_for(request)},
     )
