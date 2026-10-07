@@ -41,7 +41,12 @@ def test_exported_site_has_no_broken_internal_links(client, tmp_path):
         for link in _LINK_RE.findall(html):
             if link.startswith(("http://", "https://", "mailto:", "#", "data:")):
                 continue
-            target = (html_file.parent / link).resolve()
+            # The stylesheet carries a "?v=" cache-buster, and a link may end
+            # in a fragment; neither is part of the path on disk.
+            path = link.split("#", 1)[0].split("?", 1)[0]
+            if not path:
+                continue
+            target = (html_file.parent / path).resolve()
             if not target.exists():
                 broken.append(f"{html_file.relative_to(out)} -> {link}")
 

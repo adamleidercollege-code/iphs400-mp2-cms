@@ -1,0 +1,31 @@
+{# Shared public-site building blocks, so a Page and a Post render the same
+   breadcrumb, section heading, and Post card rather than drifting apart. #}
+
+{% macro breadcrumb(items, current) %}
+  {%- if items %}
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    {% for item in items %}<a href="{{ item.href }}">{{ item.title }}</a><span class="breadcrumb-sep" aria-hidden="true">&rsaquo;</span>{% endfor %}<span class="breadcrumb-current" aria-current="page">{{ current }}</span>
+  </nav>
+  {%- endif %}
+{% endmacro %}
+
+{% macro section_head(title) %}
+  <h2 class="section-title">{{ title }}</h2>
+{% endmacro %}
+
+{# show_topic is off inside a Topic group, where the group heading already
+   names the Topic and a badge would just repeat it. #}
+{% macro post_card(card, show_program=false, show_topic=true) %}
+  <li class="card post-card">
+    {% if show_topic %}<span class="post-topic-badge topic-{{ card.topic_value }}">{{ card.topic_label }}</span>{% endif %}
+    <h3 class="post-card-title{% if not show_topic %} post-card-title-first{% endif %}"><a class="card-link" href="{{ card.href }}">{{ card.title }}</a></h3>
+    {% if card.excerpt %}<p class="card-desc">{{ card.excerpt }}</p>{% endif %}
+    <div class="byline">
+      <span class="avatar" aria-hidden="true">{{ card.author_initials }}</span>
+      <span class="byline-text">
+        <span class="byline-name">{{ card.author_name }}</span>
+        <span class="byline-meta">{% if show_program and card.program_title %}{{ card.program_title }} &middot; {% endif %}{{ card.published_date }}</span>
+      </span>
+    </div>
+  </li>
+{% endmacro %}

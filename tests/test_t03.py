@@ -232,5 +232,5 @@ def test_seed_demo_seeds_posts_across_topics(client):
     assert len(all_posts) == len(programs) * 3
     assert len({p.topic for p in all_posts}) > 1
     editor_posts = [p for p in all_posts if p.author_id == editor.id]
-    assert len(editor_posts) == len(programs)  # the Ambassador Demo account's own anchor post
+    assert len(editor_posts) == len(programs)  # the seeded editor account's own anchor post
     assert any(p.author_id != editor.id for p in all_posts)  # plus other fictional Ambassadors

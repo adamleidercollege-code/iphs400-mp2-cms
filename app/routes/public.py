@@ -48,6 +48,12 @@ def _path_for(page: models.Page, home: models.Page) -> str:
     return "/" + "/".join(chain) + "/"
 
 
+def _dispatch_card(post: models.Post, home: models.Page) -> dict:
+    program = models.get_page_by_id(post.program_id)
+    href = _path_for(program, home).rstrip("/") + f"/{post.slug}/"
+    return post_view.dispatch_card(post, href, program.title)
+
+
 def page_context(page: models.Page) -> dict:
     home = models.ensure_home_page()
     continents = models.list_published_children(home.id)
@@ -65,9 +71,38 @@ def page_context(page: models.Page) -> dict:
             posts, lambda post: page_href.rstrip("/") + f"/{post.slug}/"
         )
 
+    featured, latest, recent_posts = None, [], []
+    if page.id == home.id:
+        newest = models.list_recent_published_posts(4)
+        featured = _dispatch_card(newest[0], home) if newest else None
+        latest = [_dispatch_card(post, home) for post in newest[1:]]
+    elif models.is_continent_page(page) or is_country:
+        recent_posts = [
+            _dispatch_card(post, home)
+            for post in models.list_published_posts_under(page.id, 3)
+        ]
+
+    intro_md, rest_md = markdown.split_intro(page.body)
+    sections = []
+    if models.is_standalone_page(page):
+        sections = [
+            {"heading": heading, "body_html": markdown.render(body)}
+            for heading, body in markdown.split_sections(rest_md)
+        ]
+        rest_md = markdown.strip_sections(rest_md)
+        latest = [
+            _dispatch_card(post, home)
+            for post in models.list_recent_published_posts(3)
+        ]
+
     return {
         "page": page,
-        "body_html": markdown.render(page.body),
+        "intro_html": markdown.render(intro_md),
+        "body_html": markdown.render(rest_md),
+        "sections": sections,
+        "featured": featured,
+        "latest": latest,
+        "recent_posts": recent_posts,
         "region": post_view.region_index(page, home, continents),
         "nav": [{"title": home.title, "href": "/", "active": active_id == home.id}] + [
             {"title": c.title, "href": _path_for(c, home), "active": active_id == c.id}
@@ -84,6 +119,7 @@ def page_context(page: models.Page) -> dict:
             )
             for c in children
         ],
+        "children_heading": post_view.children_heading(page, home),
         "post_groups": post_groups,
     }
 
@@ -97,13 +133,22 @@ def post_context(post: models.Post, program: models.Page) -> dict:
     post_href = program_href.rstrip("/") + f"/{post.slug}/"
     summary = post_view.post_summary(post, post_href)
     active_id = models.nav_root_id(program, home)
+    more_from = [
+        _dispatch_card(other, home)
+        for other in models.list_published_posts_by_program(program.id)
+        if other.id != post.id
+    ][:2]
 
     return {
         "post": post,
         "body_html": markdown.render(post.body),
         "topic_label": summary["topic_label"],
         "author_name": summary["author_name"],
+        "author_role": summary["author_role"],
+        "author_initials": summary["author_initials"],
         "published_date": summary["published_date"],
+        "region": post_view.region_index(program, home, continents),
+        "more_from": more_from,
         "program_href": program_href,
         "program_title": program.title,
         "nav": [{"title": home.title, "href": "/", "active": active_id == home.id}] + [

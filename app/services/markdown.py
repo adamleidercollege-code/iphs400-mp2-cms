@@ -22,6 +22,9 @@ _WHITESPACE = re.compile(r"\s+")
 # substitutions above, however it got there — e.g. "[text](url)." stripping
 # to "text url ." without this, since the "." follows a deleted ")".
 _SPACE_BEFORE_PUNCT = re.compile(r"\s+([.,;:!?])")
+# A "## Heading" line, which splits a Page's body into the intro that heads
+# the page and the sections rendered below it as cards.
+_H2_SPLIT = re.compile(r"(?m)^##[ \t]+(.+?)[ \t]*$")
 
 
 def render(markdown_text: str) -> str:
@@ -42,3 +45,35 @@ def excerpt(markdown_text: str, length: int = 140) -> str:
     if len(plain) <= length:
         return plain
     return plain[:length].rsplit(" ", 1)[0] + "…"
+
+
+def split_intro(markdown_text: str) -> tuple[str, str]:
+    """-> (first paragraph, everything after it). The first paragraph heads
+    the page (inside the tinted band); the rest renders in a panel below, so
+    a long body never turns the band into the whole page."""
+    stripped = markdown_text.strip()
+    if not stripped:
+        return "", ""
+    head, separator, tail = stripped.partition("\n\n")
+    if head.lstrip().startswith("##"):  # a body that opens with a section
+        return "", stripped
+    return head.strip(), tail.strip() if separator else ""
+
+
+def split_sections(markdown_text: str) -> list[tuple[str, str]]:
+    """-> [(heading, body markdown), ...] for each "## Heading" in the text.
+    A standalone Page renders these as cards, so Staff get a structured
+    layout by writing ordinary Markdown sections — no template change."""
+    matches = list(_H2_SPLIT.finditer(markdown_text))
+    sections = []
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(markdown_text)
+        sections.append((match.group(1).strip(), markdown_text[match.end():end].strip()))
+    return sections
+
+
+def strip_sections(markdown_text: str) -> str:
+    """The text before the first "## Heading" — the part split_sections leaves
+    behind."""
+    match = _H2_SPLIT.search(markdown_text)
+    return markdown_text[: match.start()].strip() if match else markdown_text.strip()

@@ -1,91 +1,137 @@
 {% extends "public/base.html" %}
+{% import "public/_macros.html" as ui %}
 {% block content %}
   {% if page.parent_id is none %}
     <section class="hero">
-      <div class="wrap">
-        <h1>Study abroad, in Kenyon students&rsquo; own words</h1>
-        <p class="hero-body">Dispatches, photos-in-words, and field notes from Kenyon students on CGE programs around the world.</p>
-        {% if children %}<a class="hero-cta" href="#destinations">Browse destinations &rarr;</a>{% endif %}
+      <div class="wrap hero-inner">
+        <div class="hero-text">
+          <h1>Study abroad, in Kenyon students&rsquo; own words</h1>
+          <p class="hero-body">Dispatches, field notes, and hard-won advice from Kenyon students on CGE programs around the world.</p>
+          {% if children %}<a class="hero-cta" href="#destinations">Browse destinations &rarr;</a>{% endif %}
+        </div>
+        {% if featured %}
+          <article class="featured">
+            <p class="featured-label">Featured dispatch</p>
+            <span class="post-topic-badge topic-{{ featured.topic_value }}">{{ featured.topic_label }}</span>
+            <h2 class="featured-title"><a class="card-link" href="{{ featured.href }}">{{ featured.title }}</a></h2>
+            <p class="featured-excerpt">{{ featured.excerpt }}</p>
+            <p class="featured-meta">{{ featured.author_name }} &middot; {{ featured.program_title }} &middot; {{ featured.published_date }}</p>
+          </article>
+        {% endif %}
       </div>
     </section>
   {% else %}
     <section class="page-header{% if region is not none %} region-{{ region }}{% endif %}">
       <div class="wrap">
-        {% if breadcrumb %}
-        <nav class="breadcrumb" aria-label="Breadcrumb">
-          {% for item in breadcrumb %}<a href="{{ item.href }}">{{ item.title }}</a><span class="breadcrumb-sep">/</span>{% endfor %}<span class="breadcrumb-current">{{ page.title }}</span>
-        </nav>
-        {% endif %}
+        {{ ui.breadcrumb(breadcrumb, page.title) }}
         <h1 class="page-title">{{ page.title }}</h1>
-        <div class="page-desc">{{ body_html | safe }}</div>
+        {% if intro_html %}<div class="page-desc">{{ intro_html | safe }}</div>{% endif %}
       </div>
     </section>
   {% endif %}
+
   <div class="wrap">
-  {% if children %}
-    <ul class="card-grid"{% if page.parent_id is none %} id="destinations"{% endif %}>
-      {% for item in children %}
-        <li class="card{% if item.region is not none %} region-{{ item.region }}{% endif %}">
-          <a class="card-link" href="{{ item.href }}">{{ item.title }}</a>
-          {% if item.excerpt %}<p class="card-desc">{{ item.excerpt }}</p>{% endif %}
-          {% if item.post_count is not none %}
-            <div class="card-stats">
-              <span class="card-stat-count">{{ item.post_count }} post{{ "s" if item.post_count != 1 else "" }}</span>
-              {% for topic in item.topics %}<span class="card-stat-topic">{{ topic }}</span>{% endfor %}
-            </div>
-          {% endif %}
-          <span class="card-cta">Explore &rarr;</span>
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-  {% if post_groups is not none %}
-    {% if post_groups %}
-      <div class="topic-filters" role="group" aria-label="Filter by Topic">
-        <button type="button" class="topic-pill is-active" data-topic="all">All</button>
-        {% for topic_value, topic_label, posts in post_groups %}
-          <button type="button" class="topic-pill" data-topic="{{ topic_value }}">{{ topic_label }}</button>
-        {% endfor %}
-      </div>
-      {% for topic_value, topic_label, posts in post_groups %}
-        <section class="post-topic-group" data-topic="{{ topic_value }}">
-          <h2>{{ topic_label }}</h2>
-          <ul class="card-grid">
-            {% for post in posts %}
-              <li class="card post-card">
-                <div class="post-card-top">
-                  <a href="{{ post.href }}">{{ post.title }}</a>
-                  <span class="post-topic-badge topic-{{ post.topic_value }}">{{ post.topic_label }}</span>
+    {% if body_html %}
+      <section class="section">
+        <div class="panel prose">{{ body_html | safe }}</div>
+      </section>
+    {% endif %}
+
+    {% if sections %}
+      <section class="section">
+        <ul class="card-grid">
+          {% for item in sections %}
+            <li class="card info-card{% if region is not none %} region-{{ region }}{% endif %}">
+              <h2 class="info-card-title">{{ item.heading }}</h2>
+              <div class="prose prose-tight">{{ item.body_html | safe }}</div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if children %}
+      <section class="section"{% if page.parent_id is none %} id="destinations"{% endif %}>
+        {{ ui.section_head(children_heading) }}
+        <ul class="card-grid">
+          {% for item in children %}
+            <li class="card{% if item.region is not none %} region-{{ item.region }}{% endif %}">
+              <h3 class="card-title"><a class="card-link" href="{{ item.href }}">{{ item.title }}</a></h3>
+              {% if item.excerpt %}<p class="card-desc">{{ item.excerpt }}</p>{% endif %}
+              {% if item.post_count is not none %}
+                <div class="card-stats">
+                  <span class="card-stat-count">{{ item.post_count }} post{{ "s" if item.post_count != 1 else "" }}</span>
+                  {% for topic in item.topics %}<span class="card-stat-topic">{{ topic }}</span>{% endfor %}
                 </div>
-                {% if post.excerpt %}<p class="card-desc">{{ post.excerpt }}</p>{% endif %}
-                <div class="post-card-byline">
-                  <span class="post-avatar">{{ post.author_initials }}</span>
-                  <p class="post-meta">{{ post.author_name }} &middot; {{ post.published_date }}</p>
-                </div>
-              </li>
+              {% endif %}
+              <span class="card-cta">Explore &rarr;</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if post_groups is not none %}
+      {% if post_groups %}
+        <section class="section">
+          {{ ui.section_head("Dispatches from " ~ page.title) }}
+          <div class="topic-filters" role="group" aria-label="Filter by Topic">
+            <button type="button" class="topic-pill is-active" data-topic="all">All</button>
+            {% for topic_value, topic_label, posts in post_groups %}
+              <button type="button" class="topic-pill" data-topic="{{ topic_value }}">{{ topic_label }}</button>
             {% endfor %}
-          </ul>
+          </div>
+          {% for topic_value, topic_label, posts in post_groups %}
+            <section class="post-topic-group" data-topic="{{ topic_value }}">
+              <h3 class="topic-group-title topic-{{ topic_value }}">{{ topic_label }}</h3>
+              <ul class="card-grid card-grid-posts">
+                {% for post in posts %}{{ ui.post_card(post, false, false) }}{% endfor %}
+              </ul>
+            </section>
+          {% endfor %}
         </section>
-      {% endfor %}
-      <script>
-        (function () {
-          var buttons = document.querySelectorAll(".topic-pill");
-          var groups = document.querySelectorAll(".post-topic-group");
-          buttons.forEach(function (btn) {
-            btn.addEventListener("click", function () {
-              buttons.forEach(function (b) { b.classList.remove("is-active"); });
-              btn.classList.add("is-active");
-              var topic = btn.getAttribute("data-topic");
-              groups.forEach(function (g) {
-                g.hidden = topic !== "all" && g.getAttribute("data-topic") !== topic;
+        <script>
+          (function () {
+            var buttons = document.querySelectorAll(".topic-pill");
+            var groups = document.querySelectorAll(".post-topic-group");
+            buttons.forEach(function (btn) {
+              btn.addEventListener("click", function () {
+                buttons.forEach(function (b) { b.classList.remove("is-active"); });
+                btn.classList.add("is-active");
+                var topic = btn.getAttribute("data-topic");
+                groups.forEach(function (g) {
+                  g.hidden = topic !== "all" && g.getAttribute("data-topic") !== topic;
+                });
               });
             });
-          });
-        })();
-      </script>
-    {% else %}
-      <p>No posts yet.</p>
+          })();
+        </script>
+      {% else %}
+        <section class="section">
+          <div class="panel empty-note">
+            <h2>No dispatches yet</h2>
+            <p>Students on this program haven&rsquo;t published anything so far. Check the other programs in the meantime.</p>
+          </div>
+        </section>
+      {% endif %}
     {% endif %}
-  {% endif %}
+
+    {% if latest %}
+      <section class="section">
+        {{ ui.section_head("Latest dispatches") }}
+        <ul class="card-grid">
+          {% for card in latest %}{{ ui.post_card(card, true) }}{% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if recent_posts %}
+      <section class="section">
+        {{ ui.section_head("Recent dispatches from " ~ page.title) }}
+        <ul class="card-grid">
+          {% for card in recent_posts %}{{ ui.post_card(card, true) }}{% endfor %}
+        </ul>
+      </section>
+    {% endif %}
   </div>
 {% endblock %}

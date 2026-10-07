@@ -435,6 +435,67 @@ def list_published_posts_by_program(program_id: int) -> list[Post]:
         conn.close()
 
 
+def list_recent_published_posts(limit: int) -> list[Post]:
+    """Newest published Posts across the whole site — Home's latest-dispatches
+    strip. Same published-only rule as every other public-facing query."""
+    conn = db.get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM posts WHERE status = 'published' "
+            "ORDER BY published_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [_row_to_post(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def list_published_posts_under(page_id: int, limit: int) -> list[Post]:
+    """Newest published Posts written under any Program in `page_id`'s
+    subtree — the "recent posts from this Continent/Country" strip. Returns
+    nothing for a Program (use list_published_posts_by_program) or a leaf."""
+    program_ids: list[int] = []
+    frontier = list_published_children(page_id)
+    while frontier:
+        page = frontier.pop()
+        if is_program_page(page):
+            program_ids.append(page.id)
+        else:
+            frontier.extend(list_published_children(page.id))
+    if not program_ids:
+        return []
+    placeholders = ",".join("?" for _ in program_ids)
+    conn = db.get_connection()
+    try:
+        rows = conn.execute(
+            f"SELECT * FROM posts WHERE status = 'published' "
+            f"AND program_id IN ({placeholders}) "
+            "ORDER BY published_at DESC LIMIT ?",
+            (*program_ids, limit),
+        ).fetchall()
+        return [_row_to_post(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def backdate_post(post_id: int, timestamp: str) -> Post:
+    """Move a Post's timestamps back in time. Only scripts/seed_demo.py uses
+    this, so the demo catalog reads like posts written over a term rather
+    than eighteen posts filed the same second."""
+    conn = db.get_connection()
+    try:
+        conn.execute(
+            "UPDATE posts SET created_at = ?, updated_at = ?, "
+            "published_at = CASE WHEN published_at IS NULL THEN NULL ELSE ? END "
+            "WHERE id = ?",
+            (timestamp, timestamp, timestamp, post_id),
+        )
+        conn.commit()
+        return get_post_by_id(post_id)
+    finally:
+        conn.close()
+
+
 def list_all_posts() -> list[Post]:
     conn = db.get_connection()
     try:
@@ -487,13 +548,26 @@ def is_program_page(page: Page) -> bool:
 
 
 def is_continent_page(page: Page) -> bool:
-    """A Continent is the Page one level below Home."""
-    return len(list_ancestors(page)) == 1
+    """A Continent is the Page one level below Home, minus the standalone
+    Pages that also sit at that depth (About CGE, Contact Us) — the same
+    show_in_footer split list_published_children already uses to keep
+    standalone Pages out of the Continent list that drives nav and
+    region_index. Without this, a Continent flagged "show in footer" would
+    satisfy is_continent_page and is_standalone_page at once (see
+    is_standalone_page)."""
+    return len(list_ancestors(page)) == 1 and not page.show_in_footer
 
 
 def is_country_page(page: Page) -> bool:
     """A Country is the Page two levels below Home — its children are Programs."""
     return len(list_ancestors(page)) == 2
+
+
+def is_standalone_page(page: Page) -> bool:
+    """A standalone Page sits directly under Home and is reachable only from
+    the footer (CONTEXT.md: About CGE, Contact Us). It holds prose rather
+    than a branch of the Continent tree, so it gets its own public layout."""
+    return len(list_ancestors(page)) == 1 and page.show_in_footer
 
 
 def nav_root_id(page: Page, home: Page) -> int:

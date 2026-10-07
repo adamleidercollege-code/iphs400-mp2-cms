@@ -8,7 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500..700&display=swap" rel="stylesheet">
   {% if css_path %}<link rel="stylesheet" href="{{ css_path }}">{% endif %}
-  {% if inline_css %}<style>{{ inline_css }}</style>{% endif %}
+  {# `| safe` because this is app.publish.CSS, a server-side constant, never
+     user content — and inside <style> Jinja's HTML escaping is wrong anyway:
+     it turns a child combinator into "&gt;" and silently drops the rule, so
+     the live preview stops matching the exported stylesheet. #}
+  {% if inline_css %}<style>{{ inline_css | safe }}</style>{% endif %}
 </head>
 <body>
   <header class="site-header">

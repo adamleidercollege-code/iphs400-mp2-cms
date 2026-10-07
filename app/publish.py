@@ -12,6 +12,7 @@ plus one `index.html` per PUBLISHED Post, nested one level under its Program
 """
 from __future__ import annotations
 
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -20,7 +21,10 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app import models, settings
 from app.services import markdown, post_view
 
-CSS = """/* Kenyon purple plus a warm gold accent; editorial travel-magazine pass, T11 follow-up. */
+CSS = """/* Kenyon purple plus a warm gold accent; editorial travel-magazine pass, T11.
+   Layout rule this pass enforces: prose always sits in a container (a tinted
+   band, a panel, or a card) and every section announces itself, so no page
+   ends in an unstructured white gap. */
 :root {
   color-scheme: light dark;
   --purple: #5B2A86;
@@ -32,6 +36,8 @@ CSS = """/* Kenyon purple plus a warm gold accent; editorial travel-magazine pas
   --muted: #5a5064;
   --card-border: #E4DCEC;
   --paper: #FDFBFE;
+  --panel: #FFFFFF;
+  --section-gap: 3.5rem;
   --topic-general: #5B2A86;
   --topic-housing: #2E7D6B;
   --topic-meals: #C9573B;
@@ -63,11 +69,17 @@ body {
 }
 h1, h2, h3 { font-family: "Fraunces", Georgia, serif; line-height: 1.2; }
 a { color: var(--purple-dark); }
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .wrap {
   max-width: 72rem;
   margin: 0 auto;
   padding: 0 1.25rem;
 }
+main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 
 /* -- header / nav -------------------------------------------------- */
 .site-header {
@@ -75,7 +87,7 @@ a { color: var(--purple-dark); }
   top: 0;
   z-index: 10;
   flex-shrink: 0;
-  background: rgba(91, 42, 134, 0.88);
+  background: rgba(91, 42, 134, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   padding: 1rem 0;
@@ -111,17 +123,20 @@ a { color: var(--purple-dark); }
 .site-nav a:hover { color: #fff; }
 .site-nav a.is-active { color: #fff; border-bottom-color: var(--gold); }
 
+/* -- breadcrumb ------------------------------------------------------ */
 .breadcrumb {
-  font-size: 0.85rem;
-  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  margin: 0 0 1.25rem;
   color: var(--muted);
 }
-.breadcrumb a { color: inherit; text-decoration: none; }
+.breadcrumb a {
+  color: var(--purple);
+  font-weight: 500;
+  text-decoration: none;
+}
 .breadcrumb a:hover { text-decoration: underline; }
-.breadcrumb-sep { margin: 0 0.5rem; opacity: 0.6; }
-.breadcrumb-current { color: var(--ink); font-weight: 600; }
-
-main { display: block; flex: 1 0 auto; }
+.breadcrumb-sep { margin: 0 0.45rem; color: var(--muted); opacity: 0.7; }
+.breadcrumb-current { color: var(--ink); font-weight: 700; }
 
 /* -- hero (Home only) ----------------------------------------------- */
 .hero {
@@ -129,29 +144,31 @@ main { display: block; flex: 1 0 auto; }
   overflow: hidden;
   background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
   color: #fff;
-  padding: 5.5rem 0 4.5rem;
-  margin-bottom: 2.5rem;
+  padding: 4.5rem 0;
 }
 .hero::before {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle at 85% 20%, rgba(201, 138, 59, 0.3), transparent 45%),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0 2px, transparent 2px 28px);
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 28px);
   pointer-events: none;
 }
-.hero .wrap { position: relative; }
+.hero-inner {
+  position: relative;
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
 .hero h1 {
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
-  max-width: 36rem;
+  font-size: clamp(2.25rem, 4.6vw, 3.25rem);
   margin: 0 0 1rem;
 }
 .hero-body {
-  max-width: 34rem;
   font-size: 1.15rem;
   color: #EDE3F7;
   margin: 0;
+  max-width: 34rem;
 }
 .hero-cta {
   display: inline-block;
@@ -166,11 +183,34 @@ main { display: block; flex: 1 0 auto; }
 }
 .hero-cta:hover { background: #E0A861; transform: translateY(-1px); }
 
+.featured {
+  position: relative;
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 0.9rem;
+  border-top: 4px solid var(--gold);
+  padding: 1.5rem 1.6rem;
+  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.7);
+}
+.featured-label {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gold-dark);
+}
+.featured-title {
+  font-size: 1.45rem;
+  margin: 0.7rem 0 0.5rem;
+}
+.featured-title a { color: var(--ink); text-decoration: none; }
+.featured:hover .featured-title a { color: var(--gold-dark); }
+.featured-excerpt { margin: 0 0 0.9rem; color: var(--muted); font-size: 0.95rem; }
+.featured-meta { margin: 0; font-size: 0.85rem; color: var(--muted); }
+
 /* -- interior page-header band --------------------------------------- */
 .page-header {
   background: var(--purple-light);
   padding: 2.25rem 0 2rem;
-  margin-bottom: 2.5rem;
   border-bottom: 3px solid var(--gold);
 }
 .page-title { font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; }
@@ -184,15 +224,70 @@ main { display: block; flex: 1 0 auto; }
 .page-header.region-4 { background: var(--region-4-tint); border-bottom-color: var(--region-4); }
 .page-header.region-5 { background: var(--region-5-tint); border-bottom-color: var(--region-5); }
 
-/* -- card grids: Continents, Countries, Programs -------------------- */
+/* -- sections and panels --------------------------------------------- */
+.section { margin-top: var(--section-gap); }
+.section-title {
+  font-size: 1.6rem;
+  margin: 0 0 1.5rem;
+}
+.section-title::after {
+  content: "";
+  display: block;
+  width: 2.75rem;
+  height: 3px;
+  margin-top: 0.6rem;
+  background: var(--gold);
+  border-radius: 2px;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--card-border);
+  border-radius: 0.9rem;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 1px 2px rgba(31, 22, 38, 0.05);
+}
+.empty-note h2 { margin-top: 0; font-size: 1.3rem; }
+.empty-note p { margin-bottom: 0; color: var(--muted); }
+
+/* -- rendered Markdown ------------------------------------------------ */
+.prose { max-width: 40rem; }
+.prose > :first-child { margin-top: 0; }
+.prose > :last-child { margin-bottom: 0; }
+.prose h2 {
+  font-size: 1.4rem;
+  margin: 2.25rem 0 0.75rem;
+}
+.prose h3 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; }
+.prose p { margin: 0 0 1.1rem; }
+.prose ul, .prose ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+.prose li { margin: 0.35rem 0; }
+.prose blockquote {
+  margin: 1.75rem 0;
+  padding: 0.25rem 0 0.25rem 1.5rem;
+  border-left: 4px solid var(--gold);
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.2rem;
+  line-height: 1.45;
+  color: var(--purple-dark);
+}
+.prose blockquote p { margin: 0; }
+.prose-tight { max-width: none; font-size: 0.95rem; color: var(--muted); }
+.prose-tight p { margin: 0 0 0.75rem; }
+
+/* -- card grids: Continents, Countries, Programs, Posts -------------- */
 .card-grid {
   list-style: none;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: 1.25rem;
-  margin: 1.5rem 0;
+  margin: 0;
   padding: 0;
 }
+/* Posts carry more text than a destination card, so they get wider tracks —
+   which lands at two across on a desktop and one on a phone. */
+.card-grid.card-grid-posts { grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); }
+/* A list of one shouldn't stretch into a banner across the content width. */
+.card-grid > .card:only-child { max-width: 32rem; }
 .card {
   position: relative;
   display: flex;
@@ -200,10 +295,10 @@ main { display: block; flex: 1 0 auto; }
   border: 1px solid var(--card-border);
   border-top: 4px solid var(--gold);
   border-radius: 0.75rem;
-  padding: 1.5rem 1.5rem 1.25rem;
+  padding: 1.4rem 1.5rem 1.25rem;
   background: var(--purple-light);
   box-shadow: 0 1px 2px rgba(31, 22, 38, 0.06);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .card:hover {
   transform: translateY(-4px);
@@ -215,15 +310,14 @@ main { display: block; flex: 1 0 auto; }
 .card.region-3 { border-top-color: var(--region-3); }
 .card.region-4 { border-top-color: var(--region-4); }
 .card.region-5 { border-top-color: var(--region-5); }
-.card-link {
-  text-decoration: none;
-  font-weight: 600;
-  font-family: "Fraunces", Georgia, serif;
+.card-title, .post-card-title {
   font-size: 1.15rem;
-  color: var(--ink);
+  margin: 0;
 }
-.card:hover .card-link { color: var(--gold-dark); }
+.post-card-title { margin-top: 0.6rem; }
+.card-link { color: var(--ink); text-decoration: none; }
 .card-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.card:hover .card-link { color: var(--gold-dark); }
 .card-desc {
   font-size: 0.92rem;
   color: var(--muted);
@@ -240,7 +334,7 @@ main { display: block; flex: 1 0 auto; }
 .card-stat-topic {
   font-size: 0.75rem;
   color: var(--muted);
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--card-border);
   border-radius: 999px;
   padding: 0.1rem 0.6rem;
@@ -255,9 +349,41 @@ main { display: block; flex: 1 0 auto; }
   color: var(--purple-dark);
 }
 .card:hover .card-cta { color: var(--gold-dark); }
-.post-meta { font-size: 0.85rem; color: var(--muted); margin: 0.35rem 0 0; }
+.info-card { background: var(--panel); }
+.info-card-title { font-size: 1.2rem; margin: 0 0 0.6rem; }
 
+/* -- bylines ---------------------------------------------------------- */
+.byline {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+.avatar {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--purple);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: "Inter", system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-lg { width: 3rem; height: 3rem; font-size: 0.95rem; }
+.byline-text { display: flex; flex-direction: column; line-height: 1.35; }
+.byline-name { font-weight: 600; font-size: 0.9rem; }
+.byline-meta { font-size: 0.82rem; color: var(--muted); }
+.byline-lg { padding-top: 0; margin-top: 1.25rem; }
+.byline-lg .byline-name { font-size: 1rem; }
+
+/* -- Topic badges and filters ----------------------------------------- */
 .post-topic-badge {
+  align-self: flex-start;
   display: inline-block;
   flex-shrink: 0;
   white-space: nowrap;
@@ -275,38 +401,15 @@ main { display: block; flex: 1 0 auto; }
 .post-topic-badge.topic-academics { background: var(--topic-academics); }
 .post-topic-badge.topic-other { background: var(--topic-other); }
 
-.post-card { display: flex; flex-direction: column; gap: 0.6rem; }
-.post-card-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.5rem 0.75rem; }
-.post-avatar {
-  flex-shrink: 0;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  background: var(--purple);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  font-family: "Inter", system-ui, sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.post-card-byline {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.25rem;
-}
-
 .topic-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 1.5rem 0;
+  margin: 0 0 2rem;
 }
 .topic-pill {
   border: 1px solid var(--purple);
-  background: #fff;
+  background: var(--panel);
   color: var(--purple-dark);
   border-radius: 999px;
   padding: 0.35rem 0.9rem;
@@ -325,32 +428,56 @@ main { display: block; flex: 1 0 auto; }
 .topic-pill[data-topic="other"] { border-color: var(--topic-other); color: var(--topic-other); }
 .topic-pill[data-topic="other"].is-active { background: var(--topic-other); color: #fff; }
 
-.post-topic-group h2 { margin-top: 2.5rem; }
-
-/* -- a single post --------------------------------------------------- */
-.post {
-  max-width: 42rem;
-  margin: 0 auto;
+.post-topic-group { margin-bottom: 2.5rem; }
+.post-topic-group:last-of-type { margin-bottom: 0; }
+.topic-group-title {
+  font-size: 1.2rem;
+  margin: 0 0 1rem;
+  padding-left: 0.75rem;
+  border-left: 4px solid var(--topic-general);
+  color: var(--purple-dark);
 }
-.post h1 { margin-top: 0.75rem; font-size: clamp(2rem, 4.5vw, 2.75rem); }
-.post h2 { margin-top: 2rem; }
-.post blockquote {
-  margin: 1.5rem 0;
-  padding: 0.25rem 1.25rem;
-  border-left: 3px solid var(--gold);
-  color: var(--muted);
-  font-style: italic;
-}
-.post ul, .post ol { padding-left: 1.5rem; }
-.post li { margin: 0.35rem 0; }
-.post-back { margin-top: 2.5rem; }
+.topic-group-title.topic-general { border-left-color: var(--topic-general); }
+.topic-group-title.topic-housing { border-left-color: var(--topic-housing); }
+.topic-group-title.topic-meals { border-left-color: var(--topic-meals); }
+.topic-group-title.topic-social-life { border-left-color: var(--topic-social-life); }
+.topic-group-title.topic-academics { border-left-color: var(--topic-academics); }
+.topic-group-title.topic-other { border-left-color: var(--topic-other); }
 
-/* -- footer ----------------------------------------------------------- */
+/* -- a single post ----------------------------------------------------- */
+.post-title {
+  font-size: clamp(2rem, 4.5vw, 2.9rem);
+  margin: 0.75rem 0 0;
+  max-width: 24ch;
+}
+/* The whole post column — article, back button, and "More from" cards —
+   shares one centred measure, so nothing on the page sits on its own axis. */
+.post-main { max-width: 46rem; margin-inline: auto; }
+.post-article {
+  max-width: none;
+  padding: 2.25rem 2.5rem;
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+.post-back { margin: 1.5rem 0 0; }
+.btn {
+  display: inline-block;
+  background: var(--purple);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  padding: 0.65rem 1.3rem;
+  border-radius: 999px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btn:hover { background: var(--purple-dark); transform: translateY(-1px); }
+
+/* -- footer ------------------------------------------------------------ */
 .site-footer {
   flex-shrink: 0;
   background: var(--purple-dark);
   color: #D9CBE8;
-  margin-top: 2rem;
   padding: 2.5rem 0 1.5rem;
   border-top: 3px solid var(--gold);
 }
@@ -379,16 +506,38 @@ main { display: block; flex: 1 0 auto; }
 .site-footer-nav a:hover { color: var(--gold); }
 .footer-note { color: #B6A3C7; }
 
-@media (max-width: 480px) {
-  .header-inner { flex-direction: column; align-items: flex-start; }
-  .site-nav, .site-footer-nav { flex-direction: column; gap: 0.5rem; }
-  .card-grid { grid-template-columns: 1fr; }
+@media (min-width: 60rem) {
+  .hero { padding: 5.5rem 0; }
+  .hero-inner { grid-template-columns: 1.15fr 0.85fr; gap: 4rem; }
+}
+@media (max-width: 48rem) {
+  .card-grid.card-grid-posts { grid-template-columns: minmax(0, 1fr); }
+  .post-article { padding: 1.75rem 1.5rem; }
+}
+@media (max-width: 30rem) {
+  :root { --section-gap: 2.5rem; }
+  .header-inner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .site-nav { gap: 0.4rem 1.1rem; }
+  .site-footer-nav { gap: 0.4rem 1.25rem; }
+  .card-grid { grid-template-columns: minmax(0, 1fr); }
   .hero { padding: 3rem 0; }
   .page-header { padding: 1.75rem 0 1.5rem; }
   .wrap { padding: 0 1rem; }
-  .post-card-top { flex-direction: column; }
+  .panel { padding: 1.4rem 1.25rem; }
+  .post-article { padding: 1.5rem 1.25rem; font-size: 1rem; }
+  .post-title { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  .card:hover, .hero-cta:hover, .btn:hover { transform: none; }
 }
 """
+
+
+# Cache-buster appended to the stylesheet link. GitHub Pages serves style.css
+# with a long cache lifetime, so without this a reader who has visited before
+# keeps the old design until their browser decides otherwise.
+CSS_VERSION = hashlib.sha256(CSS.encode()).hexdigest()[:8]
 
 
 def environment() -> Environment:
@@ -421,7 +570,9 @@ def _furniture(
 ) -> tuple[str, list[dict], list[dict]]:
     """CSS path, nav, and footer links for the page/post living at `chain` —
     shared between a Page's own render and each of its Posts' renders."""
-    css_path = _relative_link(chain, [])[: -len("index.html")] + "style.css"
+    css_path = (
+        _relative_link(chain, [])[: -len("index.html")] + f"style.css?v={CSS_VERSION}"
+    )
     nav = [
         {"title": home.title, "href": _relative_link(chain, []), "active": active_id == home.id}
     ] + [
@@ -485,17 +636,50 @@ def render_site(out: Path | None = None) -> Path:
                 posts, lambda post: _relative_link(chain, chain + [post.slug])
             )
 
+        def card_for(post: models.Post) -> dict:
+            program = models.get_page_by_id(post.program_id)
+            href = _relative_link(chain, chains[program.id] + [post.slug])
+            return post_view.dispatch_card(post, href, program.title)
+
+        featured, latest, recent_posts = None, [], []
+        if page.id == home.id:
+            newest = models.list_recent_published_posts(4)
+            featured = card_for(newest[0]) if newest else None
+            latest = [card_for(post) for post in newest[1:]]
+        elif models.is_continent_page(page) or is_country:
+            recent_posts = [
+                card_for(post) for post in models.list_published_posts_under(page.id, 3)
+            ]
+
+        intro_md, rest_md = markdown.split_intro(page.body)
+        sections = []
+        if models.is_standalone_page(page):
+            sections = [
+                {"heading": heading, "body_html": markdown.render(body)}
+                for heading, body in markdown.split_sections(rest_md)
+            ]
+            rest_md = markdown.strip_sections(rest_md)
+            # A standalone Page is short by nature; closing it with the newest
+            # dispatches gives a reader somewhere to go next.
+            latest = [card_for(post) for post in models.list_recent_published_posts(3)]
+
         html = page_template.render(
             title=page.title,
             page=page,
-            body_html=markdown.render(page.body),
+            intro_html=markdown.render(intro_md),
+            body_html=markdown.render(rest_md),
+            sections=sections,
             region=post_view.region_index(page, home, continents),
             css_path=css_path,
             nav=nav,
             breadcrumb=breadcrumb,
             footer_links=footer_links,
             children=children,
+            children_heading=post_view.children_heading(page, home),
             post_groups=post_groups,
+            featured=featured,
+            latest=latest,
+            recent_posts=recent_posts,
         )
 
         page_dir = out.joinpath(*chain) if chain else out
@@ -515,19 +699,32 @@ def render_site(out: Path | None = None) -> Path:
                     {"title": a.title, "href": _relative_link(post_chain, chains[a.id])}
                     for a in models.list_ancestors(page)
                 ] + [{"title": page.title, "href": _relative_link(post_chain, chain)}]
+                more_from = [
+                    post_view.dispatch_card(
+                        other,
+                        _relative_link(post_chain, chain + [other.slug]),
+                        page.title,
+                    )
+                    for other in models.list_published_posts_by_program(page.id)
+                    if other.id != post.id
+                ][:2]
                 post_html = post_template.render(
                     title=post.title,
                     post=post,
                     topic_label=summary["topic_label"],
                     author_name=summary["author_name"],
+                    author_role=summary["author_role"],
+                    author_initials=summary["author_initials"],
                     published_date=summary["published_date"],
                     body_html=markdown.render(post.body),
+                    region=post_view.region_index(page, home, continents),
                     css_path=post_css_path,
                     nav=post_nav,
                     breadcrumb=post_breadcrumb,
                     footer_links=post_footer_links,
                     program_href=_relative_link(post_chain, chain),
                     program_title=page.title,
+                    more_from=more_from,
                 )
                 post_dir = out.joinpath(*post_chain)
                 post_dir.mkdir(parents=True, exist_ok=True)

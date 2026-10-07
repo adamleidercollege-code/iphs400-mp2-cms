@@ -3,6 +3,7 @@ hierarchy, metrics."""
 from __future__ import annotations
 
 from app import models
+from tests.conftest import DEMO_USERS
 
 
 def _seed_program(author_id: int) -> models.Page:
@@ -23,7 +24,7 @@ def test_staff_landing_is_a_live_preview_of_the_published_site(client_as):
 
     response = client_as("admin").get("/admin")
     assert response.status_code == 200
-    assert "staff demo" in response.text.lower()
+    assert DEMO_USERS["admin"]["display_name"].lower() in response.text.lower()
     assert "live preview" in response.text.lower()
     assert "Asia" in response.text
 
@@ -105,7 +106,7 @@ def test_pending_queue_lists_pending_posts_with_author_and_edit_link(client_as):
     response = client_as("admin").get("/admin/pending")
     assert response.status_code == 200
     assert "Waiting For Review" in response.text
-    assert "Ambassador Demo" in response.text
+    assert DEMO_USERS["editor"]["display_name"] in response.text  # the Post's author
     assert f"/admin/posts/{pending.id}/edit" in response.text
     assert "Still Drafting" not in response.text
     assert draft.status == "draft"

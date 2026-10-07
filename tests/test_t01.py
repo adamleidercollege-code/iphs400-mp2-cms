@@ -15,18 +15,18 @@ def _login(client, email: str, password: str):
 
 
 def test_admin_can_log_in_and_reach_admin(client):
-    response = _login(client, **DEMO_USERS["admin"])
+    response = _login(client, DEMO_USERS["admin"]["email"], DEMO_USERS["admin"]["password"])
     assert response.status_code == 303
     assert response.headers["location"] == "/admin"
     followed = client.get("/admin")
-    assert "staff demo" in followed.text.lower()
+    assert DEMO_USERS["admin"]["display_name"].lower() in followed.text.lower()
 
 
 def test_editor_can_log_in_and_reach_admin(client):
-    response = _login(client, **DEMO_USERS["editor"])
+    response = _login(client, DEMO_USERS["editor"]["email"], DEMO_USERS["editor"]["password"])
     assert response.status_code == 303
     followed = client.get("/admin")
-    assert "ambassador demo" in followed.text.lower()
+    assert DEMO_USERS["editor"]["display_name"].lower() in followed.text.lower()
 
 
 def test_wrong_password_is_refused_generically(client):
@@ -50,7 +50,7 @@ def test_deactivated_user_cannot_log_in(client):
 def test_logout_ends_the_session(client_as):
     c = client_as("admin")
     page = c.get("/admin")
-    assert "staff demo" in page.text.lower()
+    assert DEMO_USERS["admin"]["display_name"].lower() in page.text.lower()
 
     token = _csrf_token_from(page.text)
     logout_response = c.post("/logout", data={"csrf_token": token},
@@ -58,7 +58,7 @@ def test_logout_ends_the_session(client_as):
     assert logout_response.status_code == 303
 
     after = c.get("/admin")
-    assert "staff demo" not in after.text.lower()
+    assert DEMO_USERS["admin"]["display_name"].lower() not in after.text.lower()
 
 
 def test_csrf_missing_token_rejected_on_logout(client_as):

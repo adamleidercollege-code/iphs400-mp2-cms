@@ -19,14 +19,31 @@ TOPIC_LABELS = dict(models.TOPIC_CHOICES)
 REGION_COUNT = 6
 
 
-def _author_name(post: models.Post) -> str:
+# The UI-facing name for each role, per CONTEXT.md's Role entry: admin shows
+# as Staff, editor as Ambassador.
+ROLE_LABELS = {"admin": "Staff", "editor": "Ambassador"}
+
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+           "August", "September", "October", "November", "December"]
+
+
+def _author(post: models.Post) -> tuple[str, str]:
+    """-> (display name, UI role label) for a Post's byline."""
     user = models.get_user_by_id(post.author_id) if post.author_id else None
-    return user.display_name if user is not None else "CGE Staff"
+    if user is None:
+        return "CGE Staff", ROLE_LABELS["admin"]
+    return user.display_name, ROLE_LABELS.get(user.role, ROLE_LABELS["editor"])
 
 
 def _published_date(post: models.Post) -> str:
-    stamp = post.published_at or post.created_at or ""
-    return stamp[:10]
+    """ISO stamp -> "6 October 2026". Falls back to the raw date if the stamp
+    isn't the shape SQLite writes."""
+    stamp = (post.published_at or post.created_at or "")[:10]
+    try:
+        year, month, day = (int(part) for part in stamp.split("-"))
+        return f"{day} {_MONTHS[month - 1]} {year}"
+    except (ValueError, IndexError):
+        return stamp
 
 
 def _initials(name: str) -> str:
@@ -35,7 +52,7 @@ def _initials(name: str) -> str:
 
 
 def post_summary(post: models.Post, href: str) -> dict:
-    author_name = _author_name(post)
+    author_name, author_role = _author(post)
     return {
         "post": post,
         "href": href,
@@ -44,9 +61,30 @@ def post_summary(post: models.Post, href: str) -> dict:
         "topic_value": post.topic,
         "topic_label": TOPIC_LABELS[post.topic],
         "author_name": author_name,
+        "author_role": author_role,
         "author_initials": _initials(author_name),
         "published_date": _published_date(post),
     }
+
+
+def children_heading(page: models.Page, home: models.Page) -> str:
+    """What to call a Page's list of child Pages, in the reader's words
+    rather than the tree's: Home browses regions, a Continent lists its
+    Countries, a Country lists its Programs."""
+    if page.id == home.id:
+        return "Explore by region"
+    if models.is_continent_page(page):
+        return f"Countries in {page.title}"
+    if models.is_country_page(page):
+        return f"Programs in {page.title}"
+    return "Pages"
+
+
+def dispatch_card(post: models.Post, href: str, program_title: str) -> dict:
+    """A Post's card outside its own Program page — Home's latest dispatches,
+    a Continent's recent-posts strip, "More from" on a Post page — where the
+    reader needs the Program name to place it."""
+    return {**post_summary(post, href), "program_title": program_title}
 
 
 def region_index(page: models.Page, home: models.Page, continents: list[models.Page]) -> int | None:

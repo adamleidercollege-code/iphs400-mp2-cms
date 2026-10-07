@@ -20,8 +20,10 @@ from app.main import create_app
 # Matches scripts/seed_demo.py. Passwords come from the environment there; in
 # tests they are fixed and meaningless.
 DEMO_USERS = {
-    "admin": {"email": "admin@example.test", "password": "test-admin-pw"},
-    "editor": {"email": "editor@example.test", "password": "test-editor-pw"},
+    "admin": {"email": "admin@example.test", "password": "test-admin-pw",
+              "display_name": "Dana Whitfield"},
+    "editor": {"email": "editor@example.test", "password": "test-editor-pw",
+               "display_name": "Jordan Avery"},
 }
 DEACTIVATED_USER = {"email": "deactivated@example.test", "password": "test-deactivated-pw"}
 
@@ -44,10 +46,10 @@ def seeded_db(tmp_path, monkeypatch) -> None:
     db.init_db()
     models.create_user(email=DEMO_USERS["admin"]["email"],
                         password=DEMO_USERS["admin"]["password"],
-                        role="admin", display_name="Staff Demo")
+                        role="admin", display_name=DEMO_USERS["admin"]["display_name"])
     models.create_user(email=DEMO_USERS["editor"]["email"],
                         password=DEMO_USERS["editor"]["password"],
-                        role="editor", display_name="Ambassador Demo")
+                        role="editor", display_name=DEMO_USERS["editor"]["display_name"])
     models.create_user(email=DEACTIVATED_USER["email"],
                         password=DEACTIVATED_USER["password"],
                         role="editor", display_name="Deactivated Demo", active=False)
