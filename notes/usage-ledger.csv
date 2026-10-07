@@ -151,3 +151,6 @@ ts,session,phase,provider,model,effort,ctx_pct,five_h_pct,weekly_pct
 2026-10-06T19:44:01Z,e8dae141,T11,anthropic,Sonnet 5,medium,33.0,61,10
 2026-10-06T20:24:11Z,e8dae141,T11,anthropic,Opus 5,high,52.0,100,15
 2026-10-06T23:53:22Z,882a2889,T11,anthropic,Sonnet 5,high,8.0,14.000000000000002,17
+2026-10-07T00:02:03Z,882a2889,T11,anthropic,Sonnet 5,high,11.0,19,18
+2026-10-07T00:32:57Z,882a2889,T11,anthropic,Sonnet 5,high,19.0,30,20
+2026-10-07T00:43:20Z,882a2889,T11,anthropic,Sonnet 5,high,24.0,35,21

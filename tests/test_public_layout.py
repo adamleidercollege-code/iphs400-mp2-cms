@@ -45,7 +45,7 @@ def test_preview_stylesheet_is_not_html_escaped(client):
     style = client.get("/").text.split("<style>")[1].split("</style>")[0]
 
     assert "&gt;" not in style
-    assert ".card-grid > .card:only-child" in style
+    assert ".prose > :first-child" in style
     assert style == publish.CSS
 
 
@@ -65,44 +65,50 @@ def test_exported_stylesheet_link_is_cache_busted(client, tmp_path):
 # --- every page type carries its supporting sections -------------------------
 
 
-def test_home_leads_with_a_featured_dispatch_and_lists_the_latest(client, tmp_path):
+def test_home_has_a_single_column_hero_with_no_dispatch_strip(client, tmp_path):
+    """T11 second follow-up: dispatch strips are Program/Post-only now — the
+    Home hero lost its featured-card second column, and Home no longer lists
+    a site-wide "Latest dispatches" strip below it."""
     _seed()
     out = render_site(tmp_path / "site")
     home = (out / "index.html").read_text()
 
-    assert "Featured dispatch" in home
     assert "Explore by region" in home
-    assert "Latest dispatches" in home
-    newest = models.list_recent_published_posts(1)[0]
-    assert newest.title in home
+    assert "Featured dispatch" not in home
+    assert "Latest dispatches" not in home
 
 
-def test_continent_and_country_pages_end_with_recent_dispatches(client, tmp_path):
+def test_continent_and_country_pages_end_after_the_child_cards(client, tmp_path):
+    """T11 second follow-up: no more "recent dispatches" strip past the
+    Country/Program cards — a Continent or Country page now ends there."""
     _seed()
     out = render_site(tmp_path / "site")
 
-    assert "Recent dispatches from Asia" in (out / "asia" / "index.html").read_text()
+    asia = (out / "asia" / "index.html").read_text()
+    assert "Recent dispatches from Asia" not in asia
     japan = (out / "asia" / "japan" / "index.html").read_text()
-    assert "Recent dispatches from Japan" in japan
+    assert "Recent dispatches from Japan" not in japan
     assert "Programs in Japan" in japan
 
 
-def test_standalone_pages_render_sections_as_cards_plus_a_way_onward(client, tmp_path):
+def test_standalone_pages_render_sections_as_cards(client, tmp_path):
     """About CGE and Contact Us keep a compact tinted header and move their
-    body into cards, so neither ends in an empty white page."""
+    body into cards, so neither ends in an empty white page. T11 second
+    follow-up: they no longer end with a site-wide "Latest dispatches" strip
+    either — a standalone Page's own cards are the full extent of its body."""
     _seed()
     out = render_site(tmp_path / "site")
 
     about = (out / "about-cge" / "index.html").read_text()
     for heading in ["Advising", "Pre-departure and re-entry", "Student ambassadors"]:
         assert f'class="info-card-title">{heading}<' in about
-    assert "Latest dispatches" in about
+    assert "Latest dispatches" not in about
 
     contact = (out / "contact-us" / "index.html").read_text()
     for heading in ["Email", "Office", "Hours"]:
         assert f'class="info-card-title">{heading}<' in contact
     assert "cge-demo@kenyon.edu" in contact
-    assert "Latest dispatches" in contact
+    assert "Latest dispatches" not in contact
 
 
 def test_post_pages_have_an_author_row_a_back_button_and_more_from(client, tmp_path):
@@ -152,7 +158,7 @@ def test_public_bylines_never_show_a_demo_account_label(client, tmp_path):
     assert "Maya Chen" in (out / "asia" / "japan" / "kyoto-exchange" / "index.html").read_text()
 
 
-def test_seeded_dispatches_have_distinct_titles_and_spread_out_dates(client):
+def test_seeded_posts_have_distinct_titles_and_spread_out_dates(client):
     _seed_demo, programs = _seed()
     posts = [p for program in programs for p in models.list_posts_by_program(program.id)]
 
@@ -164,7 +170,7 @@ def test_seeded_dispatches_have_distinct_titles_and_spread_out_dates(client):
     assert len(published_dates) > 5
 
 
-def test_seeded_dispatches_have_real_substance(client):
+def test_seeded_posts_have_real_substance(client):
     """Each body carries a subheading and a pull quote, so a Post page has
     something to typeset."""
     _seed_demo, programs = _seed()

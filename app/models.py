@@ -435,49 +435,6 @@ def list_published_posts_by_program(program_id: int) -> list[Post]:
         conn.close()
 
 
-def list_recent_published_posts(limit: int) -> list[Post]:
-    """Newest published Posts across the whole site — Home's latest-dispatches
-    strip. Same published-only rule as every other public-facing query."""
-    conn = db.get_connection()
-    try:
-        rows = conn.execute(
-            "SELECT * FROM posts WHERE status = 'published' "
-            "ORDER BY published_at DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
-        return [_row_to_post(r) for r in rows]
-    finally:
-        conn.close()
-
-
-def list_published_posts_under(page_id: int, limit: int) -> list[Post]:
-    """Newest published Posts written under any Program in `page_id`'s
-    subtree — the "recent posts from this Continent/Country" strip. Returns
-    nothing for a Program (use list_published_posts_by_program) or a leaf."""
-    program_ids: list[int] = []
-    frontier = list_published_children(page_id)
-    while frontier:
-        page = frontier.pop()
-        if is_program_page(page):
-            program_ids.append(page.id)
-        else:
-            frontier.extend(list_published_children(page.id))
-    if not program_ids:
-        return []
-    placeholders = ",".join("?" for _ in program_ids)
-    conn = db.get_connection()
-    try:
-        rows = conn.execute(
-            f"SELECT * FROM posts WHERE status = 'published' "
-            f"AND program_id IN ({placeholders}) "
-            "ORDER BY published_at DESC LIMIT ?",
-            (*program_ids, limit),
-        ).fetchall()
-        return [_row_to_post(r) for r in rows]
-    finally:
-        conn.close()
-
-
 def backdate_post(post_id: int, timestamp: str) -> Post:
     """Move a Post's timestamps back in time. Only scripts/seed_demo.py uses
     this, so the demo catalog reads like posts written over a term rather

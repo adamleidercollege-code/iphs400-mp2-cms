@@ -144,7 +144,7 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
   overflow: hidden;
   background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
   color: #fff;
-  padding: 4.5rem 0;
+  padding: 3.5rem 0;
 }
 .hero::before {
   content: "";
@@ -154,25 +154,26 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 28px);
   pointer-events: none;
 }
+/* A single balanced column — narrower than .wrap so a short headline and
+   pitch don't stretch edge-to-edge once there's no second column beside them. */
 .hero-inner {
   position: relative;
-  display: grid;
-  gap: 2.5rem;
-  align-items: center;
+  max-width: 36rem;
+  margin: 0 auto;
+  text-align: center;
 }
 .hero h1 {
-  font-size: clamp(2.25rem, 4.6vw, 3.25rem);
+  font-size: clamp(2.1rem, 4.2vw, 2.85rem);
   margin: 0 0 1rem;
 }
 .hero-body {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   color: #EDE3F7;
-  margin: 0;
-  max-width: 34rem;
+  margin: 0 auto;
 }
 .hero-cta {
   display: inline-block;
-  margin-top: 1.75rem;
+  margin-top: 1.6rem;
   background: var(--gold);
   color: #2A1240;
   font-weight: 600;
@@ -182,30 +183,6 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .hero-cta:hover { background: #E0A861; transform: translateY(-1px); }
-
-.featured {
-  position: relative;
-  background: var(--panel);
-  color: var(--ink);
-  border-radius: 0.9rem;
-  border-top: 4px solid var(--gold);
-  padding: 1.5rem 1.6rem;
-  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.7);
-}
-.featured-label {
-  margin: 0 0 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--gold-dark);
-}
-.featured-title {
-  font-size: 1.45rem;
-  margin: 0.7rem 0 0.5rem;
-}
-.featured-title a { color: var(--ink); text-decoration: none; }
-.featured:hover .featured-title a { color: var(--gold-dark); }
-.featured-excerpt { margin: 0 0 0.9rem; color: var(--muted); font-size: 0.95rem; }
-.featured-meta { margin: 0; font-size: 0.85rem; color: var(--muted); }
 
 /* -- interior page-header band --------------------------------------- */
 .page-header {
@@ -286,8 +263,14 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 /* Posts carry more text than a destination card, so they get wider tracks —
    which lands at two across on a desktop and one on a phone. */
 .card-grid.card-grid-posts { grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); }
-/* A list of one shouldn't stretch into a banner across the content width. */
-.card-grid > .card:only-child { max-width: 32rem; }
+/* A grid of only one or two cards (a Continent with one Country, a Country
+   with two Programs) shouldn't stretch them into oversized banners or leave
+   a lone card hugging the left edge — cap the width and center the row. */
+.card-grid:has(> .card:only-child),
+.card-grid:has(> .card:first-child:nth-last-child(2)) {
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 22rem));
+  justify-content: center;
+}
 .card {
   position: relative;
   display: flex;
@@ -506,10 +489,6 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 .site-footer-nav a:hover { color: var(--gold); }
 .footer-note { color: #B6A3C7; }
 
-@media (min-width: 60rem) {
-  .hero { padding: 5.5rem 0; }
-  .hero-inner { grid-template-columns: 1.15fr 0.85fr; gap: 4rem; }
-}
 @media (max-width: 48rem) {
   .card-grid.card-grid-posts { grid-template-columns: minmax(0, 1fr); }
   .post-article { padding: 1.75rem 1.5rem; }
@@ -636,21 +615,6 @@ def render_site(out: Path | None = None) -> Path:
                 posts, lambda post: _relative_link(chain, chain + [post.slug])
             )
 
-        def card_for(post: models.Post) -> dict:
-            program = models.get_page_by_id(post.program_id)
-            href = _relative_link(chain, chains[program.id] + [post.slug])
-            return post_view.dispatch_card(post, href, program.title)
-
-        featured, latest, recent_posts = None, [], []
-        if page.id == home.id:
-            newest = models.list_recent_published_posts(4)
-            featured = card_for(newest[0]) if newest else None
-            latest = [card_for(post) for post in newest[1:]]
-        elif models.is_continent_page(page) or is_country:
-            recent_posts = [
-                card_for(post) for post in models.list_published_posts_under(page.id, 3)
-            ]
-
         intro_md, rest_md = markdown.split_intro(page.body)
         sections = []
         if models.is_standalone_page(page):
@@ -659,9 +623,6 @@ def render_site(out: Path | None = None) -> Path:
                 for heading, body in markdown.split_sections(rest_md)
             ]
             rest_md = markdown.strip_sections(rest_md)
-            # A standalone Page is short by nature; closing it with the newest
-            # dispatches gives a reader somewhere to go next.
-            latest = [card_for(post) for post in models.list_recent_published_posts(3)]
 
         html = page_template.render(
             title=page.title,
@@ -677,9 +638,6 @@ def render_site(out: Path | None = None) -> Path:
             children=children,
             children_heading=post_view.children_heading(page, home),
             post_groups=post_groups,
-            featured=featured,
-            latest=latest,
-            recent_posts=recent_posts,
         )
 
         page_dir = out.joinpath(*chain) if chain else out
@@ -700,10 +658,8 @@ def render_site(out: Path | None = None) -> Path:
                     for a in models.list_ancestors(page)
                 ] + [{"title": page.title, "href": _relative_link(post_chain, chain)}]
                 more_from = [
-                    post_view.dispatch_card(
-                        other,
-                        _relative_link(post_chain, chain + [other.slug]),
-                        page.title,
+                    post_view.post_summary(
+                        other, _relative_link(post_chain, chain + [other.slug])
                     )
                     for other in models.list_published_posts_by_program(page.id)
                     if other.id != post.id

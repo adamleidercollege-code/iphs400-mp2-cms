@@ -4,20 +4,9 @@
   {% if page.parent_id is none %}
     <section class="hero">
       <div class="wrap hero-inner">
-        <div class="hero-text">
-          <h1>Study abroad, in Kenyon students&rsquo; own words</h1>
-          <p class="hero-body">Dispatches, field notes, and hard-won advice from Kenyon students on CGE programs around the world.</p>
-          {% if children %}<a class="hero-cta" href="#destinations">Browse destinations &rarr;</a>{% endif %}
-        </div>
-        {% if featured %}
-          <article class="featured">
-            <p class="featured-label">Featured dispatch</p>
-            <span class="post-topic-badge topic-{{ featured.topic_value }}">{{ featured.topic_label }}</span>
-            <h2 class="featured-title"><a class="card-link" href="{{ featured.href }}">{{ featured.title }}</a></h2>
-            <p class="featured-excerpt">{{ featured.excerpt }}</p>
-            <p class="featured-meta">{{ featured.author_name }} &middot; {{ featured.program_title }} &middot; {{ featured.published_date }}</p>
-          </article>
-        {% endif %}
+        <h1>Study abroad, in Kenyon students&rsquo; own words</h1>
+        <p class="hero-body">Posts, field notes, and hard-won advice from Kenyon students on CGE programs around the world.</p>
+        {% if children %}<a class="hero-cta" href="#destinations">Browse destinations &rarr;</a>{% endif %}
       </div>
     </section>
   {% else %}
@@ -74,7 +63,7 @@
     {% if post_groups is not none %}
       {% if post_groups %}
         <section class="section">
-          {{ ui.section_head("Dispatches from " ~ page.title) }}
+          {{ ui.section_head("Posts from " ~ page.title) }}
           <div class="topic-filters" role="group" aria-label="Filter by Topic">
             <button type="button" class="topic-pill is-active" data-topic="all">All</button>
             {% for topic_value, topic_label, posts in post_groups %}
@@ -85,7 +74,7 @@
             <section class="post-topic-group" data-topic="{{ topic_value }}">
               <h3 class="topic-group-title topic-{{ topic_value }}">{{ topic_label }}</h3>
               <ul class="card-grid card-grid-posts">
-                {% for post in posts %}{{ ui.post_card(post, false, false) }}{% endfor %}
+                {% for post in posts %}{{ ui.post_card(post, false) }}{% endfor %}
               </ul>
             </section>
           {% endfor %}
@@ -109,29 +98,11 @@
       {% else %}
         <section class="section">
           <div class="panel empty-note">
-            <h2>No dispatches yet</h2>
+            <h2>No posts yet</h2>
             <p>Students on this program haven&rsquo;t published anything so far. Check the other programs in the meantime.</p>
           </div>
         </section>
       {% endif %}
-    {% endif %}
-
-    {% if latest %}
-      <section class="section">
-        {{ ui.section_head("Latest dispatches") }}
-        <ul class="card-grid">
-          {% for card in latest %}{{ ui.post_card(card, true) }}{% endfor %}
-        </ul>
-      </section>
-    {% endif %}
-
-    {% if recent_posts %}
-      <section class="section">
-        {{ ui.section_head("Recent dispatches from " ~ page.title) }}
-        <ul class="card-grid">
-          {% for card in recent_posts %}{{ ui.post_card(card, true) }}{% endfor %}
-        </ul>
-      </section>
     {% endif %}
   </div>
 {% endblock %}

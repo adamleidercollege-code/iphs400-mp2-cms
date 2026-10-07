@@ -153,7 +153,7 @@ STANDALONE_PAGES = {
         "The Kenyon Center for Global Engagement helps students find a program abroad, "
         "get ready to go, and make sense of it once they are back.\n\n"
         "This site is a demo build for IPHS 400 Mini-Project #2, not an official Kenyon "
-        "page. The programs, countries, and student dispatches on it are invented, but "
+        "page. The programs, countries, and student posts on it are invented, but "
         "the structure matches what a real CGE site would need.\n\n"
         "## Advising\n\n"
         "Talk through which programs fit your major, what credits transfer, and how a "
@@ -164,7 +164,7 @@ STANDALONE_PAGES = {
         "a smaller one when you get back, where returning students compare notes with "
         "people about to leave.\n\n"
         "## Student ambassadors\n\n"
-        "Students who have already been abroad write the dispatches on this site and "
+        "Students who have already been abroad write the posts on this site and "
         "answer questions from anyone considering the same program."
     ),
     "Contact Us": (
@@ -187,7 +187,7 @@ STANDALONE_PAGES = {
 # visible on a fresh clone (T04 acceptance): at least one Post in each status.
 POST_STATUSES = ["draft", "pending", "published"]
 
-# Clearly fictional student Ambassadors who write the demo dispatches. The
+# Clearly fictional student Ambassadors who write the demo posts. The
 # seeded editor account is one of them, so no account label ever shows up as
 # a byline on the public site.
 FICTIONAL_AMBASSADORS = [
@@ -200,7 +200,7 @@ FICTIONAL_AMBASSADORS = [
 ]
 FICTIONAL_AMBASSADOR_PASSWORD = "change-me-demo-ambassador"
 
-# Three dispatches per Program, each with its own title, voice, Topic, author
+# Three posts per Program, each with its own title, voice, Topic, author
 # and date. The first entry of each list is written by the seeded editor
 # account (so a grader logging in as the Ambassador has their own posts to
 # edit) and cycles through draft/pending/published across the catalog; the
@@ -652,7 +652,7 @@ def _days_ago(days: int) -> str:
 
 
 def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
-    """The three dispatches PROGRAM_POSTS defines for each Program. The one
+    """The three posts PROGRAM_POSTS defines for each Program. The one
     with `author: None` belongs to the seeded editor account and cycles
     through draft/pending/published across the catalog, so the admin side has
     a Post in every status to work with (T04); the other two are always
@@ -686,7 +686,7 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
             models.backdate_post(post.id, _days_ago(spec["days_ago"]))
 
     total = sum(len(PROGRAM_POSTS.get(p.title, [])) for p in programs)
-    print(f"Seeded {total} dispatches across Topics, authors, dates, and statuses "
+    print(f"Seeded {total} posts across Topics, authors, dates, and statuses "
           "(draft/pending/published) under the seeded Programs.")
 
 

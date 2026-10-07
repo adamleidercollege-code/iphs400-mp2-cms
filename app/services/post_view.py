@@ -80,13 +80,6 @@ def children_heading(page: models.Page, home: models.Page) -> str:
     return "Pages"
 
 
-def dispatch_card(post: models.Post, href: str, program_title: str) -> dict:
-    """A Post's card outside its own Program page — Home's latest dispatches,
-    a Continent's recent-posts strip, "More from" on a Post page — where the
-    reader needs the Program name to place it."""
-    return {**post_summary(post, href), "program_title": program_title}
-
-
 def region_index(page: models.Page, home: models.Page, continents: list[models.Page]) -> int | None:
     """Which Continent's accent color governs `page` — None for Home itself,
     otherwise the index (mod REGION_COUNT) of the Continent that page lives
