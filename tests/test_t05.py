@@ -115,7 +115,9 @@ def test_published_post_renders_sanitized_markdown(client_as):
 
     response = c.get(_program_path(program) + f"{post.slug}/")
     assert response.status_code == 200
-    assert "<script>" not in response.text
+    # The page legitimately carries its own <script> (search, #10); what must
+    # never survive sanitization is the *injected* payload from the body.
+    assert "alert('x')" not in response.text
     assert "<strong>world</strong>" in response.text
 
 

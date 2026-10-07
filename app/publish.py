@@ -13,13 +13,14 @@ plus one `index.html` per PUBLISHED Post, nested one level under its Program
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app import models, settings
-from app.services import markdown, post_view
+from app.services import markdown, post_view, search_index
 
 CSS = """/* Kenyon purple plus a warm gold accent; editorial travel-magazine pass, T11.
    Layout rule this pass enforces: prose always sits in a container (a tinted
@@ -524,6 +525,62 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 .site-footer-nav a:hover { color: var(--gold); }
 .footer-note { color: #B6A3C7; }
 
+/* -- search (#10): client-side only, against search-index.json -------- */
+.site-search { position: relative; }
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+.search-input {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  min-width: 10rem;
+}
+.search-input::placeholder { color: #D9CBE8; }
+.search-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  color: #E7D9F2;
+}
+.search-fields label { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.4rem 0 0;
+  padding: 0.4rem;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 16px 28px -12px rgba(31, 22, 38, 0.3);
+  max-height: 22rem;
+  overflow-y: auto;
+  z-index: 30;
+}
+.search-result { padding: 0.5rem 0.6rem; border-radius: 0.5rem; }
+.search-result a { font-weight: 600; text-decoration: none; color: var(--purple-dark); }
+.search-result a:hover { text-decoration: underline; }
+.search-result-tags { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+.search-empty { padding: 0.5rem 0.6rem; color: var(--muted); font-size: 0.9rem; }
+.search-panel .search-input {
+  color: var(--ink);
+  background: var(--panel);
+  border-color: var(--card-border);
+  width: 100%;
+}
+.search-panel .search-input::placeholder { color: var(--muted); }
+.search-panel .search-fields { color: var(--muted); }
+
 @media (max-width: 48rem) {
   .card-grid.card-grid-posts { grid-template-columns: minmax(0, 1fr); }
   .post-article { padding: 1.75rem 1.5rem; }
@@ -540,6 +597,8 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
   .panel { padding: 1.4rem 1.25rem; }
   .post-article { padding: 1.5rem 1.25rem; font-size: 1rem; }
   .post-title { max-width: none; }
+  .site-search { width: 100%; }
+  .search-input { width: 100%; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
@@ -581,12 +640,14 @@ def _furniture(
     footer_pages: list[models.Page],
     chains: dict[int, list[str]],
     active_id: int,
-) -> tuple[str, list[dict], list[dict]]:
-    """CSS path, nav, and footer links for the page/post living at `chain` —
-    shared between a Page's own render and each of its Posts' renders."""
-    css_path = (
-        _relative_link(chain, [])[: -len("index.html")] + f"style.css?v={CSS_VERSION}"
-    )
+) -> tuple[str, list[dict], list[dict], str]:
+    """CSS path, nav, footer links, and the site-root prefix for the
+    page/post living at `chain` — shared between a Page's own render and each
+    of its Posts' renders. The site-root prefix (e.g. "../../") is also how a
+    search result's root-relative href becomes a working link from wherever
+    the search box that found it lives."""
+    site_root = _relative_link(chain, [])[: -len("index.html")]
+    css_path = site_root + f"style.css?v={CSS_VERSION}"
     nav = [
         {"title": home.title, "href": _relative_link(chain, []), "active": active_id == home.id}
     ] + [
@@ -601,7 +662,7 @@ def _furniture(
         {"title": f.title, "href": _relative_link(chain, chains[f.id])}
         for f in footer_pages
     ]
-    return css_path, nav, footer_links
+    return css_path, nav, footer_links, site_root
 
 
 def render_site(out: Path | None = None) -> Path:
@@ -622,19 +683,29 @@ def render_site(out: Path | None = None) -> Path:
     page_template = env.get_template("public/page.html")
     post_template = env.get_template("public/post.html")
 
+    # Search (#10): one JSON file at the site root, containing only published
+    # Posts — a draft or pending Post never reaches it, same gate as the HTML
+    # below. Every page links to it root-relatively via its own site_root.
+    entries = search_index.build_index(lambda chain: "/".join(chain) + "/index.html")
+    (out / "search-index.json").write_text(json.dumps(entries))
+
     for page in all_pages:
         if page.status != "published":
             continue
         chain = chains[page.id]
         active_id = models.nav_root_id(page, home)
-        css_path, nav, footer_links = _furniture(
+        css_path, nav, footer_links, site_root = _furniture(
             chain, home, continents, footer_pages, chains, active_id
         )
+        search_index_href = site_root + "search-index.json"
         breadcrumb = [
             {"title": a.title, "href": _relative_link(chain, chains[a.id])}
             for a in models.list_ancestors(page)
         ]
+        is_continent = models.is_continent_page(page)
         is_country = models.is_country_page(page)
+        is_program = models.is_program_page(page)
+        search_scope_chain = chain if (is_continent or is_country or is_program) else None
         children = [
             post_view.page_card(
                 c, _relative_link(chain, chains[c.id]), home, continents,
@@ -645,7 +716,7 @@ def render_site(out: Path | None = None) -> Path:
 
         post_groups = None
         tag_filters = None
-        if models.is_program_page(page):
+        if is_program:
             posts = models.list_published_posts_by_program(page.id)
             post_groups = post_view.grouped_post_summaries(
                 posts, lambda post: _relative_link(chain, chain + [post.slug])
@@ -676,6 +747,9 @@ def render_site(out: Path | None = None) -> Path:
             children_heading=post_view.children_heading(page, home),
             post_groups=post_groups,
             tag_filters=tag_filters,
+            site_root=site_root,
+            search_index_href=search_index_href,
+            search_scope_chain=search_scope_chain,
         )
 
         page_dir = out.joinpath(*chain) if chain else out
@@ -688,7 +762,7 @@ def render_site(out: Path | None = None) -> Path:
             for summary in summaries:
                 post = summary["post"]
                 post_chain = chain + [post.slug]
-                post_css_path, post_nav, post_footer_links = _furniture(
+                post_css_path, post_nav, post_footer_links, post_site_root = _furniture(
                     post_chain, home, continents, footer_pages, chains, active_id
                 )
                 post_breadcrumb = [
@@ -720,6 +794,8 @@ def render_site(out: Path | None = None) -> Path:
                     program_href=_relative_link(post_chain, chain),
                     program_title=page.title,
                     more_from=more_from,
+                    site_root=post_site_root,
+                    search_index_href=post_site_root + "search-index.json",
                 )
                 post_dir = out.joinpath(*post_chain)
                 post_dir.mkdir(parents=True, exist_ok=True)

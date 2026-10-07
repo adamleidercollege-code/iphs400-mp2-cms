@@ -33,15 +33,22 @@ def render(markdown_text: str) -> str:
     return nh3.clean(_md.render(markdown_text))
 
 
-def excerpt(markdown_text: str, length: int = 140) -> str:
-    """Plain-text teaser for a card: strip common Markdown markers, collapse
-    whitespace, and cut at a word boundary. Never marked `| safe` by callers,
-    so no sanitization is needed here — Jinja autoescapes it like any text."""
+def plain_text(markdown_text: str) -> str:
+    """Full Markdown -> plain text, stripped of its own marker syntax. Shared
+    by `excerpt` (which then truncates) and the search index (#10), which
+    needs the whole body to match against, not a card teaser. Never marked
+    `| safe` by callers, so no sanitization is needed here — Jinja autoescapes
+    it like any text, and the search index is plain JSON, not markup."""
     no_bullets = _MD_LIST_BULLET.sub("", markdown_text)
     no_style = _MD_STYLE_MARKERS.sub("", no_bullets)
     no_link_punct = _MD_LINK_PUNCT.sub(" ", no_style)
     collapsed = _WHITESPACE.sub(" ", no_link_punct).strip()
-    plain = _SPACE_BEFORE_PUNCT.sub(r"\1", collapsed)
+    return _SPACE_BEFORE_PUNCT.sub(r"\1", collapsed)
+
+
+def excerpt(markdown_text: str, length: int = 140) -> str:
+    """Plain-text teaser for a card: `plain_text`, cut at a word boundary."""
+    plain = plain_text(markdown_text)
     if len(plain) <= length:
         return plain
     return plain[:length].rsplit(" ", 1)[0] + "…"

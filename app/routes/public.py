@@ -10,11 +10,12 @@ Only PUBLISHED pages are reachable here — same rule as the static export.
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app import models, settings
 from app.publish import CSS
-from app.services import markdown, post_view
+from app.services import markdown, post_view, search_index
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -56,10 +57,17 @@ def page_context(page: models.Page) -> dict:
     children = models.list_published_children(page.id)
     active_id = models.nav_root_id(page, home)
     is_country = models.is_country_page(page)
+    is_program = models.is_program_page(page)
+    chain = [a.slug for a in models.list_ancestors(page) if a.id != home.id] + (
+        [page.slug] if page.id != home.id else []
+    )
+    search_scope_chain = (
+        chain if (models.is_continent_page(page) or is_country or is_program) else None
+    )
 
     post_groups = None
     tag_filters = None
-    if models.is_program_page(page):
+    if is_program:
         page_href = _path_for(page, home)
         posts = models.list_published_posts_by_program(page.id)
         post_groups = post_view.grouped_post_summaries(
@@ -100,6 +108,9 @@ def page_context(page: models.Page) -> dict:
         "children_heading": post_view.children_heading(page, home),
         "post_groups": post_groups,
         "tag_filters": tag_filters,
+        "site_root": "",
+        "search_index_href": "/search-index.json",
+        "search_scope_chain": search_scope_chain,
     }
 
 
@@ -140,7 +151,19 @@ def post_context(post: models.Post, program: models.Page) -> dict:
         "footer_links": [
             {"title": f.title, "href": _path_for(f, home)} for f in footer_pages
         ],
+        "site_root": "",
+        "search_index_href": "/search-index.json",
     }
+
+
+@router.get("/search-index.json")
+def search_index_json():
+    """Live-preview counterpart to the search-index.json app.publish writes
+    into site/ — same shape, built from the live database instead of a
+    static export, so the admin console's preview can exercise search before
+    anyone runs `cms publish`."""
+    entries = search_index.build_index(lambda chain: "/" + "/".join(chain) + "/")
+    return JSONResponse(entries)
 
 
 @router.get("/{path:path}")

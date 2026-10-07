@@ -20,6 +20,37 @@
   {% endif %}
 
   <div class="wrap">
+    {% if search_scope_chain %}
+      <section class="section">
+        <div class="panel search-panel">
+          <h2 class="info-card-title">Search {{ page.title }}</h2>
+          <div class="site-search site-search--scoped" data-search-root
+               data-search-scope="{{ search_scope_chain | join('/') }}">
+            <form class="search-form" role="search" onsubmit="return false;">
+              <input type="search" class="search-input" placeholder="Search within {{ page.title }}" aria-label="Search within {{ page.title }}">
+              <span class="search-fields">
+                <label><input type="checkbox" class="search-field" value="title" checked> Title</label>
+                <label><input type="checkbox" class="search-field" value="text" checked> Text</label>
+                <label><input type="checkbox" class="search-field" value="tags" checked> Tags</label>
+              </span>
+            </form>
+            <ul class="search-results" hidden></ul>
+          </div>
+        </div>
+      </section>
+      <script>
+        (function () {
+          var root = document.querySelector(".site-search--scoped[data-search-root]");
+          var scopeAttr = root.getAttribute("data-search-scope");
+          window.CGESearch.setup(root, {
+            indexUrl: "{{ search_index_href }}",
+            siteRoot: "{{ site_root }}",
+            scope: scopeAttr ? scopeAttr.split("/") : null,
+          });
+        })();
+      </script>
+    {% endif %}
+
     {% if body_html %}
       <section class="section">
         <div class="panel prose">{{ body_html | safe }}</div>
