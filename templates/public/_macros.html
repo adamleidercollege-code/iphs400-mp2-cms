@@ -15,11 +15,20 @@
 
 {# show_topic is off inside a Topic group, where the group heading already
    names the Topic and a badge would just repeat it. #}
+{% macro tag_badges(tags) %}
+  {%- if tags %}
+  <div class="tag-badges">
+    {% for tag in tags %}<span class="tag-badge">{{ tag.name }}</span>{% endfor %}
+  </div>
+  {%- endif %}
+{% endmacro %}
+
 {% macro post_card(card, show_topic=true) %}
-  <li class="card post-card">
+  <li class="card post-card" data-tags="{{ card.tags | map(attribute='id') | join(',') }}">
     {% if show_topic %}<span class="post-topic-badge topic-{{ card.topic_value }}">{{ card.topic_label }}</span>{% endif %}
     <h3 class="post-card-title{% if not show_topic %} post-card-title-first{% endif %}"><a class="card-link" href="{{ card.href }}">{{ card.title }}</a></h3>
     {% if card.excerpt %}<p class="card-desc">{{ card.excerpt }}</p>{% endif %}
+    {{ tag_badges(card.tags) }}
     <div class="byline">
       <span class="avatar" aria-hidden="true">{{ card.author_initials }}</span>
       <span class="byline-text">

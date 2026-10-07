@@ -43,6 +43,16 @@ def _get_post_or_404(post_id: int) -> models.Post:
     return post
 
 
+def _existing_tag_ids(tag_ids: list[int]) -> list[int]:
+    """Drop any `tag_ids` value that isn't a real Tag — a submitted form
+    always lists only existing tags as checkboxes, but a tampered or stale
+    request could send one that's since been deleted; silently dropping it
+    (rather than 500ing on the tags.post_tags foreign key) is enough, since
+    there's nothing useful to tell the submitter about a tag they can't see."""
+    valid = {t.id for t in models.list_tags()}
+    return [tag_id for tag_id in tag_ids if tag_id in valid]
+
+
 def _authorize_post_write(user: models.User, post: models.Post) -> None:
     """Admin: any Post, any status. Editor: only their own, only while draft."""
     if user.role == "admin":
@@ -78,7 +88,12 @@ def _render_form(
     title: str = "",
     body: str = "",
     topic: str = "general",
+    tag_ids: list[int] | None = None,
 ):
+    selected_tag_ids = (
+        tag_ids if tag_ids is not None
+        else [t.id for t in models.get_tags_for_post(post.id)] if post else []
+    )
     context = console_shell.console_context(request, user)
     context.update({
         "title": "Edit post" if post else "New post",
@@ -88,8 +103,10 @@ def _render_form(
         "form_title": title,
         "form_body": body,
         "form_topic": topic,
+        "form_tag_ids": selected_tag_ids,
         "preview_html": markdown.render(body),
         "topics": models.TOPIC_CHOICES,
+        "tags": models.list_tags(),
     })
     return templates.TemplateResponse(request, "admin/posts_form.html", context)
 
@@ -135,6 +152,7 @@ async def create_post(
     title: str = Form(""),
     body: str = Form(""),
     topic: str = Form("general"),
+    tag_ids: list[int] = Form([]),
     action: str = Form("save"),
     user: models.User = Depends(require_user),
     _csrf: None = Depends(verify_csrf),
@@ -142,17 +160,20 @@ async def create_post(
     program = _get_program_or_404(program_id)
     if action == "preview":
         return _render_form(request, user, post=None, program=program,
-                             title=title, body=body, topic=topic)
+                             title=title, body=body, topic=topic, tag_ids=tag_ids)
     if not title.strip():
         return _render_form(request, user, post=None, program=program,
-                             error="Title is required.", title=title, body=body, topic=topic)
+                             error="Title is required.", title=title, body=body,
+                             topic=topic, tag_ids=tag_ids)
     try:
-        models.create_post(
+        post = models.create_post(
             program_id=program_id, title=title, body=body, topic=topic, author_id=user.id,
         )
     except ValueError as exc:
         return _render_form(request, user, post=None, program=program,
-                             error=str(exc), title=title, body=body, topic=topic)
+                             error=str(exc), title=title, body=body,
+                             topic=topic, tag_ids=tag_ids)
+    models.set_post_tags(post.id, _existing_tag_ids(tag_ids))
     return console_shell.redirect_with_flash(
         f"/admin/posts?program_id={program_id}", "Post created.")
 
@@ -175,6 +196,7 @@ async def update_post(
     title: str = Form(""),
     body: str = Form(""),
     topic: str = Form("general"),
+    tag_ids: list[int] = Form([]),
     action: str = Form("save"),
     user: models.User = Depends(require_user),
     _csrf: None = Depends(verify_csrf),
@@ -184,15 +206,18 @@ async def update_post(
     program = _get_program_or_404(post.program_id)
     if action == "preview":
         return _render_form(request, user, post=post, program=program,
-                             title=title, body=body, topic=topic)
+                             title=title, body=body, topic=topic, tag_ids=tag_ids)
     if not title.strip():
         return _render_form(request, user, post=post, program=program,
-                             error="Title is required.", title=title, body=body, topic=topic)
+                             error="Title is required.", title=title, body=body,
+                             topic=topic, tag_ids=tag_ids)
     try:
         models.update_post(post_id, title=title, body=body, topic=topic)
     except ValueError as exc:
         return _render_form(request, user, post=post, program=program,
-                             error=str(exc), title=title, body=body, topic=topic)
+                             error=str(exc), title=title, body=body,
+                             topic=topic, tag_ids=tag_ids)
+    models.set_post_tags(post_id, _existing_tag_ids(tag_ids))
     return console_shell.redirect_with_flash(
         f"/admin/posts?program_id={program.id}", "Post saved.")
 

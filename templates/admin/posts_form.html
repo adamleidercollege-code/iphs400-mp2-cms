@@ -20,6 +20,18 @@
     <label>Body (Markdown)
       <textarea name="body" rows="10">{{ form_body }}</textarea>
     </label>
+    <fieldset>
+      <legend>Tags</legend>
+      {% for tag in tags %}
+        <label>
+          <input type="checkbox" name="tag_ids" value="{{ tag.id }}"
+                 {% if tag.id in form_tag_ids %}checked{% endif %}>
+          {{ tag.name }}
+        </label>
+      {% else %}
+        <p>No tags yet. Staff can add some from the Tags screen.</p>
+      {% endfor %}
+    </fieldset>
     <button type="submit" name="action" value="preview">Preview</button>
     <button type="submit" name="action" value="save">Save</button>
   </form>

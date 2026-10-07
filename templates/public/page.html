@@ -70,6 +70,14 @@
               <button type="button" class="topic-pill" data-topic="{{ topic_value }}">{{ topic_label }}</button>
             {% endfor %}
           </div>
+          {% if tag_filters %}
+            <div class="tag-filters" role="group" aria-label="Filter by tag">
+              <button type="button" class="tag-pill is-active" data-tag="all">All tags</button>
+              {% for tag in tag_filters %}
+                <button type="button" class="tag-pill" data-tag="{{ tag.id }}">{{ tag.name }}</button>
+              {% endfor %}
+            </div>
+          {% endif %}
           {% for topic_value, topic_label, posts in post_groups %}
             <section class="post-topic-group" data-topic="{{ topic_value }}">
               <h3 class="topic-group-title topic-{{ topic_value }}">{{ topic_label }}</h3>
@@ -81,16 +89,40 @@
         </section>
         <script>
           (function () {
-            var buttons = document.querySelectorAll(".topic-pill");
+            var topicButtons = document.querySelectorAll(".topic-pill");
+            var tagButtons = document.querySelectorAll(".tag-pill");
             var groups = document.querySelectorAll(".post-topic-group");
-            buttons.forEach(function (btn) {
-              btn.addEventListener("click", function () {
-                buttons.forEach(function (b) { b.classList.remove("is-active"); });
-                btn.classList.add("is-active");
-                var topic = btn.getAttribute("data-topic");
-                groups.forEach(function (g) {
-                  g.hidden = topic !== "all" && g.getAttribute("data-topic") !== topic;
+            var selectedTopic = "all";
+            var selectedTag = "all";
+
+            function apply() {
+              groups.forEach(function (g) {
+                var topicMatch = selectedTopic === "all" || g.getAttribute("data-topic") === selectedTopic;
+                var visibleCount = 0;
+                g.querySelectorAll(".post-card").forEach(function (card) {
+                  var tags = (card.getAttribute("data-tags") || "").split(",").filter(Boolean);
+                  var visible = topicMatch && (selectedTag === "all" || tags.indexOf(selectedTag) !== -1);
+                  card.hidden = !visible;
+                  if (visible) visibleCount++;
                 });
+                g.hidden = !topicMatch || visibleCount === 0;
+              });
+            }
+
+            topicButtons.forEach(function (btn) {
+              btn.addEventListener("click", function () {
+                topicButtons.forEach(function (b) { b.classList.remove("is-active"); });
+                btn.classList.add("is-active");
+                selectedTopic = btn.getAttribute("data-topic");
+                apply();
+              });
+            });
+            tagButtons.forEach(function (btn) {
+              btn.addEventListener("click", function () {
+                tagButtons.forEach(function (b) { b.classList.remove("is-active"); });
+                btn.classList.add("is-active");
+                selectedTag = btn.getAttribute("data-tag");
+                apply();
               });
             });
           })();

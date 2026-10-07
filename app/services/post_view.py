@@ -60,11 +60,25 @@ def post_summary(post: models.Post, href: str) -> dict:
         "excerpt": markdown.excerpt(post.body),
         "topic_value": post.topic,
         "topic_label": TOPIC_LABELS[post.topic],
+        "tags": models.get_tags_for_post(post.id),
         "author_name": author_name,
         "author_role": author_role,
         "author_initials": _initials(author_name),
         "published_date": _published_date(post),
     }
+
+
+def distinct_tags(post_groups: list[tuple[str, str, list[dict]]]) -> list[models.Tag]:
+    """Every Tag actually used by a Program's currently-shown Posts, in name
+    order — the options for its reader-facing Tag filter. A Tag nobody on
+    this Program has used yet is left out, same as `group_posts_by_topic`
+    omits an empty Topic."""
+    seen: dict[int, models.Tag] = {}
+    for _value, _label, summaries in post_groups:
+        for summary in summaries:
+            for tag in summary["tags"]:
+                seen[tag.id] = tag
+    return sorted(seen.values(), key=lambda t: t.name)
 
 
 def children_heading(page: models.Page, home: models.Page) -> str:

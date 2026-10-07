@@ -187,6 +187,19 @@ STANDALONE_PAGES = {
 # visible on a fresh clone (T04 acceptance): at least one Post in each status.
 POST_STATUSES = ["draft", "pending", "published"]
 
+# Starter Tags (#14), Staff-curated and independent of Topic. Applied below
+# by each demo post's Topic, which is a convenient, deterministic way to make
+# sure every Tag lands on at least one seeded post without hand-picking 18.
+TAG_NAMES = ["visa", "budget", "homestay", "travel", "classes"]
+TOPIC_TAGS = {
+    "housing": ["homestay"],
+    "meals": ["budget"],
+    "academics": ["classes"],
+    "social-life": ["travel"],
+    "other": ["visa"],
+    "general": ["travel", "budget"],
+}
+
 # Clearly fictional student Ambassadors who write the demo posts. The
 # seeded editor account is one of them, so no account label ever shows up as
 # a byline on the public site.
@@ -651,6 +664,16 @@ def _days_ago(days: int) -> str:
     return moment.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
+def _seed_tags() -> dict[str, models.Tag]:
+    existing = {t.name: t for t in models.list_tags()}
+    if existing:
+        print("Tags already seeded, leaving as-is.")
+        return existing
+    tags = {name: models.create_tag(name) for name in TAG_NAMES}
+    print(f"Seeded {len(tags)} starter tags.")
+    return tags
+
+
 def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
     """The three posts PROGRAM_POSTS defines for each Program. The one
     with `author: None` belongs to the seeded editor account and cycles
@@ -665,6 +688,7 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
         return
 
     ambassadors = _ensure_fictional_ambassadors()
+    tags = _seed_tags()
 
     for i, program in enumerate(programs):
         specs = PROGRAM_POSTS.get(program.title)
@@ -678,6 +702,9 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
             post = models.create_post(
                 program_id=program.id, title=spec["title"], body=spec["body"],
                 topic=spec["topic"], author_id=author_id,
+            )
+            models.set_post_tags(
+                post.id, [tags[name].id for name in TOPIC_TAGS.get(spec["topic"], [])]
             )
             if status in ("pending", "published"):
                 models.set_post_status(post.id, from_status="draft", to_status="pending")

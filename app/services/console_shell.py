@@ -27,6 +27,7 @@ SIDEBAR = [
     ("/admin/pending", "Pending queue"),
     ("/admin/accounts", "Accounts"),
     ("/admin/pages", "Page hierarchy"),
+    ("/admin/tags", "Tags"),
     ("/admin/metrics", "Metrics"),
 ]
 

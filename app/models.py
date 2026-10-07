@@ -357,6 +357,66 @@ def delete_page(page_id: int) -> None:
         conn.close()
 
 
+@dataclass(frozen=True)
+class Tag:
+    id: int
+    name: str
+    created_at: str
+
+
+def _row_to_tag(row: sqlite3.Row) -> Tag:
+    return Tag(id=row["id"], name=row["name"], created_at=row["created_at"])
+
+
+def list_tags() -> list[Tag]:
+    conn = db.get_connection()
+    try:
+        rows = conn.execute("SELECT * FROM tags ORDER BY name").fetchall()
+        return [_row_to_tag(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_tag_by_id(tag_id: int) -> Tag | None:
+    conn = db.get_connection()
+    try:
+        row = conn.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
+        return _row_to_tag(row) if row else None
+    finally:
+        conn.close()
+
+
+def create_tag(name: str) -> Tag:
+    conn = db.get_connection()
+    try:
+        cur = conn.execute("INSERT INTO tags (name) VALUES (?)", (name,))
+        conn.commit()
+        return get_tag_by_id(cur.lastrowid)
+    finally:
+        conn.close()
+
+
+def rename_tag(tag_id: int, name: str) -> Tag:
+    if get_tag_by_id(tag_id) is None:
+        raise ValueError(f"tag {tag_id} does not exist")
+    conn = db.get_connection()
+    try:
+        conn.execute("UPDATE tags SET name = ? WHERE id = ?", (name, tag_id))
+        conn.commit()
+        return get_tag_by_id(tag_id)
+    finally:
+        conn.close()
+
+
+def delete_tag(tag_id: int) -> None:
+    conn = db.get_connection()
+    try:
+        conn.execute("DELETE FROM tags WHERE id = ?", (tag_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 TOPIC_CHOICES = [
     ("general", "General"),
     ("housing", "Housing"),
@@ -629,6 +689,35 @@ def delete_post(post_id: int) -> None:
     conn = db.get_connection()
     try:
         conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_tags_for_post(post_id: int) -> list[Tag]:
+    conn = db.get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT tags.* FROM tags "
+            "JOIN post_tags ON post_tags.tag_id = tags.id "
+            "WHERE post_tags.post_id = ? ORDER BY tags.name",
+            (post_id,),
+        ).fetchall()
+        return [_row_to_tag(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def set_post_tags(post_id: int, tag_ids: list[int]) -> None:
+    """Replace a Post's Tags wholesale with `tag_ids` — the post form always
+    submits the full selected set (every checked checkbox), never a delta."""
+    conn = db.get_connection()
+    try:
+        conn.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
+        conn.executemany(
+            "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)",
+            [(post_id, tag_id) for tag_id in tag_ids],
+        )
         conn.commit()
     finally:
         conn.close()

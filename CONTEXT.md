@@ -64,6 +64,21 @@ no separate field for it, only Topic.
 _Avoid_: treating Hot Topic as a type distinct from Topic, or as a field of
 its own — see Topic.
 
+**Tag**:
+A Staff-curated label an Ambassador or Staff member attaches to their own
+Post from an existing list — unlike Topic, a Post can carry any number of
+Tags, and nobody chooses one that doesn't already exist. Tags live
+independently of Topic: a Post keeps exactly one Topic (its forum section)
+and zero or more Tags (free-form, cross-cutting labels like visa or
+homestay) at the same time. Staff alone create, rename, and delete Tags,
+from a Tags screen in the Staff sidebar; an Ambassador picks only from what's
+already there. Shown on a Post's card and its own page, and usable as a
+second, independent filter alongside Topic on a Program page — there is no
+sitewide tag listing.
+_Avoid_: calling a Tag a Topic or treating it as a replacement for Topic —
+the two coexist: Topic is single-select and fixed to six values; Tag is
+multi-select and Staff-extensible.
+
 **Status** (of a Post):
 draft → pending → published. *Draft*: the author is still writing; only they
 can edit it, and it is not public. *Pending*: the author has submitted it for

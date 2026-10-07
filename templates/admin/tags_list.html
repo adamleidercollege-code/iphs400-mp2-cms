@@ -1,0 +1,14 @@
+{% extends "admin/console_base.html" %}
+{% block console_content %}
+  <h1>Tags</h1>
+  <p><a href="tags/new">New tag</a></p>
+  <ul>
+    {% for tag in tags %}
+      <li>
+        {{ tag.name }}
+        <a href="tags/{{ tag.id }}/edit">rename</a>
+        <a href="tags/{{ tag.id }}/delete">delete</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

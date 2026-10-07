@@ -6,6 +6,7 @@
       {{ ui.breadcrumb(breadcrumb, post.title) }}
       <span class="post-topic-badge topic-{{ post.topic }}">{{ topic_label }}</span>
       <h1 class="post-title">{{ post.title }}</h1>
+      {{ ui.tag_badges(tags) }}
       <div class="byline byline-lg">
         <span class="avatar avatar-lg" aria-hidden="true">{{ author_initials }}</span>
         <span class="byline-text">

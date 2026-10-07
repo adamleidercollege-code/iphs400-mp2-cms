@@ -1,0 +1,10 @@
+{% extends "admin/console_base.html" %}
+{% block console_content %}
+  <h1>Delete "{{ tag.name }}"?</h1>
+  <p>Are you sure? This removes it from every post that carries it. This cannot be undone.</p>
+  <form method="post" action="/admin/tags/{{ tag.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn-danger">Yes, delete it</button>
+  </form>
+  <p><a href="../../tags">Cancel</a></p>
+{% endblock %}

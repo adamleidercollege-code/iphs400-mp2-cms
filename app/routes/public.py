@@ -58,12 +58,14 @@ def page_context(page: models.Page) -> dict:
     is_country = models.is_country_page(page)
 
     post_groups = None
+    tag_filters = None
     if models.is_program_page(page):
         page_href = _path_for(page, home)
         posts = models.list_published_posts_by_program(page.id)
         post_groups = post_view.grouped_post_summaries(
             posts, lambda post: page_href.rstrip("/") + f"/{post.slug}/"
         )
+        tag_filters = post_view.distinct_tags(post_groups)
 
     intro_md, rest_md = markdown.split_intro(page.body)
     sections = []
@@ -97,6 +99,7 @@ def page_context(page: models.Page) -> dict:
         ],
         "children_heading": post_view.children_heading(page, home),
         "post_groups": post_groups,
+        "tag_filters": tag_filters,
     }
 
 
@@ -119,6 +122,7 @@ def post_context(post: models.Post, program: models.Page) -> dict:
         "post": post,
         "body_html": markdown.render(post.body),
         "topic_label": summary["topic_label"],
+        "tags": summary["tags"],
         "author_name": summary["author_name"],
         "author_role": summary["author_role"],
         "author_initials": summary["author_initials"],

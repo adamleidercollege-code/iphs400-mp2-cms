@@ -411,6 +411,41 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 .topic-pill[data-topic="other"] { border-color: var(--topic-other); color: var(--topic-other); }
 .topic-pill[data-topic="other"].is-active { background: var(--topic-other); color: #fff; }
 
+/* -- Tag badges and filters (#14): open-ended and Staff-curated, so unlike
+   Topic they get one neutral color rather than a fixed palette. -------- */
+.tag-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+}
+.tag-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+}
+.tag-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: -1rem 0 2rem;
+}
+.tag-pill {
+  border: 1px solid var(--muted);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}
+.tag-pill.is-active { background: var(--muted); color: #fff; border-color: var(--muted); }
+
 .post-topic-group { margin-bottom: 2.5rem; }
 .post-topic-group:last-of-type { margin-bottom: 0; }
 .topic-group-title {
@@ -609,11 +644,13 @@ def render_site(out: Path | None = None) -> Path:
         ]
 
         post_groups = None
+        tag_filters = None
         if models.is_program_page(page):
             posts = models.list_published_posts_by_program(page.id)
             post_groups = post_view.grouped_post_summaries(
                 posts, lambda post: _relative_link(chain, chain + [post.slug])
             )
+            tag_filters = post_view.distinct_tags(post_groups)
 
         intro_md, rest_md = markdown.split_intro(page.body)
         sections = []
@@ -638,6 +675,7 @@ def render_site(out: Path | None = None) -> Path:
             children=children,
             children_heading=post_view.children_heading(page, home),
             post_groups=post_groups,
+            tag_filters=tag_filters,
         )
 
         page_dir = out.joinpath(*chain) if chain else out
@@ -668,6 +706,7 @@ def render_site(out: Path | None = None) -> Path:
                     title=post.title,
                     post=post,
                     topic_label=summary["topic_label"],
+                    tags=summary["tags"],
                     author_name=summary["author_name"],
                     author_role=summary["author_role"],
                     author_initials=summary["author_initials"],
