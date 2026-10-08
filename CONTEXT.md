@@ -79,6 +79,25 @@ _Avoid_: calling a Tag a Topic or treating it as a replacement for Topic —
 the two coexist: Topic is single-select and fixed to six values; Tag is
 multi-select and Staff-extensible.
 
+**Media**:
+An uploaded image (JPG, PNG, or WEBP, up to ~5 MB) with alt text required
+before it can be saved, stored under a generated filename — never the one
+the browser sent. An Ambassador or Staff member adds one inline in their own
+Post's body under the same edit-while-draft rule that already governs the
+Post's text. `cms publish` copies only the Media actually used by published
+content into `site/`; a draft's or pending Post's Media never reaches it,
+same as its HTML.
+_Avoid_: "image" alone once inside the CMS's own vocabulary — Media is
+specifically an uploaded file with its own row, alt text, and generated
+filename, not any arbitrary picture.
+
+**Cover image**:
+A Page's or Post's own Media, shown on its card wherever one is listed and,
+for a Post, at the top of its own page too. Only a Program-level Page has
+one, and only Staff set it — the same admin-only gate as every other Page
+edit. A Post's cover is set by that Post's author, following the same
+draft-only edit rule as the rest of the Post.
+
 **Status** (of a Post):
 draft → pending → published. *Draft*: the author is still writing; only they
 can edit it, and it is not public. *Pending*: the author has submitted it for

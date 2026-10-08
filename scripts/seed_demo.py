@@ -19,6 +19,31 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import db, models  # noqa: E402
+from app.services import media_store, placeholder_image  # noqa: E402
+
+# One (top, bottom) gradient per Continent, roughly matching app.publish's
+# CSS --region-N accents (#15: scripts/seed_demo.py seeds placeholder covers,
+# since Pillow isn't a dependency this project can add — see
+# app.services.placeholder_image).
+REGION_GRADIENTS = [
+    ((201, 138, 59), (156, 103, 35)),   # gold
+    ((46, 125, 107), (36, 99, 85)),     # teal
+    ((201, 87, 59), (156, 60, 35)),     # terracotta
+]
+
+
+def _seed_cover_image(
+    alt_text: str, gradient: tuple, uploaded_by: int, post_id: int | None = None
+) -> models.Media:
+    """`post_id` is only for an inline body image (see app/db.py's media
+    table comment) — a cover (the default, post_id=None) is never
+    body-text-referenced, so it doesn't need an owning Post."""
+    top, bottom = gradient
+    data = placeholder_image.gradient_png(640, 360, top, bottom)
+    filename, content_type, size = media_store.save_upload(data, uploaded_by)
+    return models.create_media(filename=filename, content_type=content_type,
+                                size=size, alt_text=alt_text, uploaded_by=uploaded_by,
+                                post_id=post_id)
 
 # Continent -> Country -> Program -> body, each with its own clearly
 # fictional description (T11 follow-up: no more "Placeholder copy").
@@ -631,12 +656,18 @@ def _seed_pages(admin_id: int) -> list[models.Page]:
         return models.publish_page(page.id)
 
     programs: list[models.Page] = []
-    for continent_title, continent_data in CONTINENTS.items():
+    for region_i, (continent_title, continent_data) in enumerate(CONTINENTS.items()):
         continent = _add(home.id, continent_title, continent_data["description"])
+        gradient = REGION_GRADIENTS[region_i % len(REGION_GRADIENTS)]
         for country_title, country_data in continent_data["countries"].items():
             country = _add(continent.id, country_title, country_data["description"])
             for program_title, program_body in country_data["programs"].items():
-                programs.append(_add(country.id, program_title, program_body))
+                program = _add(country.id, program_title, program_body)
+                cover = _seed_cover_image(
+                    f"{program_title} cover photo", gradient, admin_id
+                )
+                models.set_page_cover(program.id, cover.id)
+                programs.append(program)
 
     for standalone_title, body in STANDALONE_PAGES.items():
         _add(home.id, standalone_title, body, show_in_footer=True)
@@ -695,6 +726,7 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
         if not specs:
             continue
         anchor_status = POST_STATUSES[i % len(POST_STATUSES)]
+        gradient = REGION_GRADIENTS[i % len(REGION_GRADIENTS)]
         for spec in specs:
             is_anchor = spec["author"] is None
             author_id = editor_id if is_anchor else ambassadors[spec["author"]].id
@@ -706,6 +738,22 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
             models.set_post_tags(
                 post.id, [tags[name].id for name in TOPIC_TAGS.get(spec["topic"], [])]
             )
+            # The anchor post (the editor's own, cycling draft/pending/
+            # published across the catalog) also carries a cover and an
+            # inline body image, in every status — #15 acceptance needs a
+            # draft's images proven never to reach `cms publish`.
+            if is_anchor:
+                cover = _seed_cover_image(
+                    f"{spec['title']} cover photo", gradient, author_id
+                )
+                models.set_post_cover(post.id, cover.id)
+                inline = _seed_cover_image(
+                    f"A scene from {program.title}", gradient, author_id, post_id=post.id
+                )
+                models.update_post(
+                    post.id, title=post.title, topic=post.topic,
+                    body=post.body.rstrip() + f"\n\n![{inline.alt_text}](media/{inline.id})\n",
+                )
             if status in ("pending", "published"):
                 models.set_post_status(post.id, from_status="draft", to_status="pending")
             if status == "published":
@@ -714,7 +762,8 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
 
     total = sum(len(PROGRAM_POSTS.get(p.title, [])) for p in programs)
     print(f"Seeded {total} posts across Topics, authors, dates, and statuses "
-          "(draft/pending/published) under the seeded Programs.")
+          "(draft/pending/published) under the seeded Programs, with cover "
+          "and inline images on each program's anchor post.")
 
 
 def _seed_deactivated_users_with_drafts(programs: list[models.Page]) -> None:

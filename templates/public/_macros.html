@@ -25,6 +25,7 @@
 
 {% macro post_card(card, show_topic=true) %}
   <li class="card post-card" data-tags="{{ card.tags | map(attribute='id') | join(',') }}">
+    {% if card.cover %}<img class="card-cover" src="{{ card.cover.href }}" alt="{{ card.cover.alt }}">{% endif %}
     {% if show_topic %}<span class="post-topic-badge topic-{{ card.topic_value }}">{{ card.topic_label }}</span>{% endif %}
     <h3 class="post-card-title{% if not show_topic %} post-card-title-first{% endif %}"><a class="card-link" href="{{ card.href }}">{{ card.title }}</a></h3>
     {% if card.excerpt %}<p class="card-desc">{{ card.excerpt }}</p>{% endif %}

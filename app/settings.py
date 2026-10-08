@@ -11,6 +11,7 @@ load_into_environ(ROOT / ".env")  # a real exported env var still always wins
 
 TEMPLATES = ROOT / "templates"
 SITE = ROOT / "site"
+MEDIA_DIR = Path(os.environ.get("CMS_MEDIA_DIR", ROOT / "uploads"))
 
 SECRET_KEY = os.environ.get("CMS_SECRET_KEY", "dev-only-not-for-production")
 DATABASE_PATH = Path(os.environ.get("CMS_DATABASE", ROOT / "cms.db"))

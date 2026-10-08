@@ -65,13 +65,20 @@ def page_context(page: models.Page) -> dict:
         chain if (models.is_continent_page(page) or is_country or is_program) else None
     )
 
+    # Live preview is always served from the server root, so every Media
+    # href is root-relative regardless of how deep `page` sits (unlike
+    # app.publish's static export, which recomputes a relative prefix per
+    # page depth).
+    media_href = post_view.media_href_for("/")
+
     post_groups = None
     tag_filters = None
     if is_program:
         page_href = _path_for(page, home)
         posts = models.list_published_posts_by_program(page.id)
         post_groups = post_view.grouped_post_summaries(
-            posts, lambda post: page_href.rstrip("/") + f"/{post.slug}/"
+            posts, lambda post: page_href.rstrip("/") + f"/{post.slug}/",
+            media_href=media_href,
         )
         tag_filters = post_view.distinct_tags(post_groups)
 
@@ -102,6 +109,7 @@ def page_context(page: models.Page) -> dict:
             post_view.page_card(
                 c, _path_for(c, home), home, continents,
                 stats=post_view.program_stats(c.id) if is_country else None,
+                media_href=media_href,
             )
             for c in children
         ],
@@ -121,19 +129,25 @@ def post_context(post: models.Post, program: models.Page) -> dict:
     ancestors = [a for a in models.list_ancestors(program) if a.id != program.id]
     program_href = _path_for(program, home)
     post_href = program_href.rstrip("/") + f"/{post.slug}/"
-    summary = post_view.post_summary(post, post_href)
+    media_href = post_view.media_href_for("/")
+    summary = post_view.post_summary(post, post_href, media_href=media_href)
     active_id = models.nav_root_id(program, home)
     more_from = [
-        post_view.post_summary(other, program_href.rstrip("/") + f"/{other.slug}/")
+        post_view.post_summary(
+            other, program_href.rstrip("/") + f"/{other.slug}/", media_href=media_href,
+        )
         for other in models.list_published_posts_by_program(program.id)
         if other.id != post.id
     ][:2]
 
     return {
         "post": post,
-        "body_html": markdown.render(post.body),
+        "body_html": markdown.render(
+            post.body, media_href=post_view.post_body_media_href_for(post, "/")
+        ),
         "topic_label": summary["topic_label"],
         "tags": summary["tags"],
+        "cover": summary["cover"],
         "author_name": summary["author_name"],
         "author_role": summary["author_role"],
         "author_initials": summary["author_initials"],

@@ -19,6 +19,7 @@
   </section>
 
   <div class="wrap post-main">
+    {% if cover %}<img class="post-cover" src="{{ cover.href }}" alt="{{ cover.alt }}">{% endif %}
     <section class="section">
       <article class="panel prose post-article">{{ body_html | safe }}</article>
       <p class="post-back"><a class="btn" href="{{ program_href }}">&larr; Back to {{ program_title }}</a></p>
