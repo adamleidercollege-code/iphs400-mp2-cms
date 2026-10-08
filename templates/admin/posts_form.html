@@ -20,6 +20,18 @@
     <label>Body (Markdown)
       <textarea name="body" rows="10">{{ form_body }}</textarea>
     </label>
+    <details class="formatting-help">
+      <summary>Formatting help</summary>
+      <ul>
+        <li><code>## heading</code> &mdash; a section heading</li>
+        <li><code>&gt; quote</code> &mdash; a quoted line</li>
+        <li><code>**bold**</code> &mdash; bold text</li>
+        <li><code>*italic*</code> &mdash; italic text</li>
+        <li><code>- bullet</code> &mdash; a bullet list item</li>
+      </ul>
+      <p>Using "Add image" below puts the image line into the body for you
+        automatically &mdash; you don't need to type it yourself.</p>
+    </details>
     <fieldset>
       <legend>Tags</legend>
       {% for tag in tags %}

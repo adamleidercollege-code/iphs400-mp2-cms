@@ -218,6 +218,19 @@ button.btn-danger:hover { background: var(--danger-dark); }
   flex-shrink: 0;
 }
 
+/* -- formatting help (#15 follow-up) ------------------------------------ */
+/* A small collapsible Markdown cheat-sheet next to the body field
+   (templates/admin/posts_form.html), closed by default via <details>. */
+.formatting-help {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.5rem 1.25rem;
+  margin: 0 0 1.5rem;
+  background: #fff;
+}
+.formatting-help summary { cursor: pointer; font-weight: 600; }
+.formatting-help ul { margin: 0.5rem 0; padding-left: 1.25rem; }
+
 /* -- lists standing in for tables --------------------------------------- */
 ul { list-style: none; margin: 0; padding: 0; }
 main ul li {

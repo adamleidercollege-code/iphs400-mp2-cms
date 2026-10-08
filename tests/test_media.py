@@ -287,6 +287,21 @@ def test_invalid_upload_is_rejected_with_an_error_not_saved(client_as):
     assert models.list_all_pages()  # sanity: didn't blow up the fixture
 
 
+def test_editor_page_shows_a_formatting_help_box(client_as):
+    admin = models.get_user_by_email("admin@example.test")
+    program = _seed_program(admin.id)
+    c = client_as("editor")
+    post = _create_draft_post(c, program.id)
+
+    edit_page = c.get(f"/admin/posts/{post.id}/edit")
+    assert "Formatting help" in edit_page.text
+    assert "## heading" in edit_page.text
+    assert "**bold**" in edit_page.text
+    assert "*italic*" in edit_page.text
+    assert "- bullet" in edit_page.text
+    assert "Add image" in edit_page.text.split("Formatting help")[1][:600]
+
+
 # -- Inline images in a Post's body -------------------------------------------
 
 
