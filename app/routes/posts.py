@@ -116,8 +116,23 @@ def _render_form(
         "topics": models.TOPIC_CHOICES,
         "tags": models.list_tags(),
         "cover": cover,
+        "just_added": _just_added_media(request),
+        "added_kind": request.query_params.get("added_kind"),
     })
     return templates.TemplateResponse(request, "admin/posts_form.html", context)
+
+
+def _just_added_media(request: Request) -> dict | None:
+    """The Media a redirect back from a successful upload just added
+    (console_shell.redirect_with_flash's `added_media_id`) — {href, alt}
+    for the small thumbnail next to that upload section's confirmation."""
+    added_media_id = request.query_params.get("added_media_id")
+    if not added_media_id or not added_media_id.isdigit():
+        return None
+    media = models.get_media_by_id(int(added_media_id))
+    if media is None:
+        return None
+    return {"href": f"/media/{media.filename}", "alt": media.alt_text}
 
 
 @router.get("")
@@ -327,7 +342,8 @@ async def set_post_cover(
                                  size=size, alt_text=alt_text, uploaded_by=user.id)
     models.set_post_cover(post.id, media.id)
     return console_shell.redirect_with_flash(
-        f"/admin/posts/{post.id}/edit", "Cover image set.")
+        f"/admin/posts/{post.id}/edit", "Cover image set.",
+        fragment="cover-section", added_kind="cover", added_media_id=str(media.id))
 
 
 @router.post("/{post_id}/images")
@@ -360,4 +376,5 @@ async def add_post_image(
     new_body = post.body.rstrip() + f"\n\n![{alt_text}](media/{media.id})\n"
     models.update_post(post_id, title=post.title, body=new_body, topic=post.topic)
     return console_shell.redirect_with_flash(
-        f"/admin/posts/{post.id}/edit", "Image added to the post.")
+        f"/admin/posts/{post.id}/edit", "Image added to the post.",
+        fragment="images-section", added_kind="image", added_media_id=str(media.id))

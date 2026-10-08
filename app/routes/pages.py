@@ -43,8 +43,22 @@ def _render_form(
         "error": error,
         "is_program": is_program,
         "cover": cover,
+        "just_added": _just_added_media(request),
     })
     return templates.TemplateResponse(request, "admin/pages_form.html", context)
+
+
+def _just_added_media(request: Request) -> dict | None:
+    """The Media a redirect back from a successful cover upload just added
+    (console_shell.redirect_with_flash's `added_media_id`) — {href, alt}
+    for the small thumbnail next to the upload confirmation."""
+    added_media_id = request.query_params.get("added_media_id")
+    if not added_media_id or not added_media_id.isdigit():
+        return None
+    media = models.get_media_by_id(int(added_media_id))
+    if media is None:
+        return None
+    return {"href": f"/media/{media.filename}", "alt": media.alt_text}
 
 
 @router.get("")
@@ -176,4 +190,5 @@ async def set_page_cover(
                                  size=size, alt_text=alt_text, uploaded_by=user.id)
     models.set_page_cover(page.id, media.id)
     return console_shell.redirect_with_flash(
-        f"/admin/pages/{page.id}/edit", "Cover image set.")
+        f"/admin/pages/{page.id}/edit", "Cover image set.",
+        fragment="cover-section", added_media_id=str(media.id))

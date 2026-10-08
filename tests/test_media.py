@@ -7,9 +7,12 @@ Post), and that a draft's images are never published.
 from __future__ import annotations
 
 import importlib.util
+import io
+import os
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from app import models, publish, settings
 from app.publish import render_site
@@ -19,16 +22,25 @@ from tests.conftest import _csrf_token_from
 _ROOT = Path(__file__).resolve().parents[1]
 
 
+def _real_image(width: int = 64, height: int = 64, fmt: str = "JPEG", **save_kwargs) -> bytes:
+    """A real, Pillow-decodable image — media_store now actually opens and
+    re-encodes every upload (#15 follow-up: resize/rotate/strip-EXIF), so a
+    bare signature-plus-padding fixture no longer survives it."""
+    buf = io.BytesIO()
+    Image.new("RGB", (width, height), color=(10, 20, 30)).save(buf, format=fmt, **save_kwargs)
+    return buf.getvalue()
+
+
 def _valid_png() -> bytes:
     return placeholder_image.gradient_png(8, 8, (10, 20, 30), (40, 50, 60))
 
 
 def _valid_jpeg() -> bytes:
-    return b"\xff\xd8\xff" + b"\x00" * 64
+    return _real_image(fmt="JPEG")
 
 
 def _valid_webp() -> bytes:
-    return b"RIFF" + b"\x00\x00\x00\x00" + b"WEBP" + b"\x00" * 32
+    return _real_image(fmt="WEBP")
 
 
 def _not_an_image() -> bytes:
@@ -100,16 +112,21 @@ def test_save_upload_rejects_empty_file(tmp_path, monkeypatch):
 def test_save_upload_accepts_jpg_png_and_webp_by_real_content_not_claimed_type(
     tmp_path, monkeypatch
 ):
+    """Every upload is re-encoded (normalized) on the way in, so this checks
+    the stored file is a real, correctly-typed image rather than a byte-for-
+    byte copy of the input."""
     monkeypatch.setattr(settings, "MEDIA_DIR", tmp_path)
-    for data, expected_type in [
-        (_valid_jpeg(), "image/jpeg"),
-        (_valid_png(), "image/png"),
-        (_valid_webp(), "image/webp"),
+    for data, expected_type, expected_size in [
+        (_valid_jpeg(), "image/jpeg", (64, 64)),
+        (_valid_png(), "image/png", (8, 8)),
+        (_valid_webp(), "image/webp", (64, 64)),
     ]:
         filename, content_type, size = media_store.save_upload(data, uploaded_by=None)
         assert content_type == expected_type
-        assert size == len(data)
-        assert (settings.MEDIA_DIR / filename).read_bytes() == data
+        stored_path = settings.MEDIA_DIR / filename
+        assert size == stored_path.stat().st_size
+        stored = Image.open(stored_path)
+        assert stored.size == expected_size
 
 
 def test_save_upload_ignores_the_original_filename_entirely(tmp_path, monkeypatch):
@@ -120,6 +137,98 @@ def test_save_upload_ignores_the_original_filename_entirely(tmp_path, monkeypatc
     filename, _content_type, _size = media_store.save_upload(_valid_png(), uploaded_by=None)
     assert filename != "original.png"
     assert "/" not in filename and ".." not in filename
+
+
+# -- Normalizing an upload: resize, rotate upright, strip metadata -----------
+
+
+def test_a_large_image_is_resized_to_1600px_on_its_longest_side(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "MEDIA_DIR", tmp_path)
+    data = _real_image(3000, 2000, fmt="JPEG")  # 3:2 landscape, well over the cap
+    filename, _content_type, _size = media_store.save_upload(data, uploaded_by=None)
+
+    stored = Image.open(settings.MEDIA_DIR / filename)
+    assert max(stored.size) == media_store.MAX_DIMENSION
+    # aspect ratio preserved (within integer-rounding)
+    assert abs(stored.size[0] / stored.size[1] - 3000 / 2000) < 0.01
+
+
+def test_a_small_image_is_never_enlarged(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "MEDIA_DIR", tmp_path)
+    data = _real_image(200, 100, fmt="PNG")  # well under the 1600px cap
+    filename, _content_type, _size = media_store.save_upload(data, uploaded_by=None)
+
+    stored = Image.open(settings.MEDIA_DIR / filename)
+    assert stored.size == (200, 100)
+
+
+def test_exif_and_gps_metadata_is_stripped(tmp_path, monkeypatch):
+    """A phone photo's EXIF can carry its exact GPS location — important to
+    remove for students posting from abroad. Also covers the EXIF
+    orientation tag specifically, since a correct re-encode drops it (its
+    rotation gets baked into the pixels instead, see the next test)."""
+    monkeypatch.setattr(settings, "MEDIA_DIR", tmp_path)
+    source = Image.new("RGB", (400, 300), color=(80, 90, 100))
+    exif = source.getexif()
+    exif[0x0112] = 1  # Orientation: normal (upright) — isolates the GPS check
+    exif[0x8825] = {  # GPSInfo IFD
+        1: "N", 2: (40.0, 26.0, 0.0),  # GPSLatitudeRef, GPSLatitude
+        3: "W", 4: (79.0, 56.0, 0.0),  # GPSLongitudeRef, GPSLongitude
+    }
+    buf = io.BytesIO()
+    source.save(buf, format="JPEG", exif=exif)
+    data = buf.getvalue()
+    assert dict(Image.open(io.BytesIO(data)).getexif().get_ifd(0x8825))  # sanity: GPS is really there
+
+    filename, _content_type, _size = media_store.save_upload(data, uploaded_by=None)
+
+    stored = Image.open(settings.MEDIA_DIR / filename)
+    assert dict(stored.getexif()) == {}
+    assert dict(stored.getexif().get_ifd(0x8825)) == {}
+    assert "exif" not in stored.info
+
+
+def test_a_sideways_phone_photo_is_rotated_upright_and_the_tag_dropped(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "MEDIA_DIR", tmp_path)
+    # A 400x300 landscape capture held rotated 90 degrees, as a phone camera
+    # often records it: EXIF Orientation 6 means "rotate 90 CW to display
+    # upright", so the file's own pixel dimensions are still 400x300 but the
+    # correctly-displayed image is 300x400 portrait.
+    source = Image.new("RGB", (400, 300), color=(120, 60, 200))
+    exif = source.getexif()
+    exif[0x0112] = 6
+    buf = io.BytesIO()
+    source.save(buf, format="JPEG", exif=exif)
+    data = buf.getvalue()
+
+    filename, _content_type, _size = media_store.save_upload(data, uploaded_by=None)
+
+    stored = Image.open(settings.MEDIA_DIR / filename)
+    assert stored.size == (300, 400)  # rotation baked into the pixels
+    assert stored.getexif().get(0x0112) is None  # orientation tag gone, nothing left to re-apply
+
+
+def test_a_10mb_upload_is_accepted_and_normalized(tmp_path, monkeypatch):
+    """Raised from 5 MB to 15 MB (#15 follow-up) since every upload is
+    resized down before it's stored — a real 10 MB photo should no longer
+    be rejected outright the way it would have been before."""
+    monkeypatch.setattr(settings, "MEDIA_DIR", tmp_path)
+    # Random (incompressible) pixel data, sized so the uncompressed PNG
+    # lands solidly in the 8-12 MB range — a deliberately "big phone photo"
+    # sized upload, not just a big file.
+    side = 1900
+    noise = os.urandom(side * side * 3)
+    source = Image.frombytes("RGB", (side, side), noise)
+    buf = io.BytesIO()
+    source.save(buf, format="PNG", compress_level=0)
+    data = buf.getvalue()
+    assert 8 * 1024 * 1024 < len(data) <= media_store.MAX_SIZE
+
+    filename, content_type, _size = media_store.save_upload(data, uploaded_by=None)
+
+    assert content_type == "image/png"
+    stored = Image.open(settings.MEDIA_DIR / filename)
+    assert max(stored.size) == media_store.MAX_DIMENSION  # also resized, same as any other upload
 
 
 # -- Alt text is required before an image can be saved -----------------------

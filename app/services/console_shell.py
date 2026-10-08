@@ -49,13 +49,28 @@ def console_context(request: Request, user: models.User, sidebar=None) -> dict:
     }
 
 
-def redirect_with_flash(url: str, message: str) -> RedirectResponse:
+def redirect_with_flash(
+    url: str, message: str, *, fragment: str | None = None, **extra_params: str
+) -> RedirectResponse:
     """A 303 redirect carrying a one-time success message, read back by
     templates/base.html's `request.query_params`. No session state: a
     refresh of the destination page just drops the message, which is fine
-    for a "your save worked" banner."""
+    for a "your save worked" banner.
+
+    `fragment` and `extra_params` (#15 follow-up) let a caller land the
+    reader on a specific part of a long page — e.g. an image upload redirect
+    jumps straight to that upload section instead of the top of the post
+    form, with `extra_params` carrying which Media was just added so the
+    template can show its thumbnail there. The fragment is appended last,
+    since a URL fragment must come after the query string to be valid.
+    """
     sep = "&" if "?" in url else "?"
-    return RedirectResponse(url=f"{url}{sep}flash={quote(message)}", status_code=303)
+    target = f"{url}{sep}flash={quote(message)}"
+    for key, value in extra_params.items():
+        target += f"&{key}={quote(str(value))}"
+    if fragment:
+        target += f"#{fragment}"
+    return RedirectResponse(url=target, status_code=303)
 
 
 # Reuses the public site's Kenyon purple + gold palette and Fraunces/Inter
@@ -177,6 +192,31 @@ button.btn-danger:hover { background: var(--danger-dark); }
 /* Same overflow fix as app.publish's .prose img, for the live admin
    preview of a Post's body (templates/admin/posts_form.html). */
 .post-preview img, .preview-pane img { max-width: 100%; height: auto; }
+
+/* -- image upload sections (#15 follow-up) ------------------------------ */
+/* A light bordered box around each upload section (templates/admin/
+   posts_form.html's Cover image / Add an image to the body, and
+   pages_form.html's Cover image) — otherwise two near-identical forms
+   back to back are hard to tell apart at a glance. */
+.upload-box {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 1rem 1.25rem;
+  margin: 0 0 1.5rem;
+  background: #fff;
+}
+.upload-box h2 { margin-top: 0; }
+/* The just-added confirmation (redirected back from a successful upload,
+   console_shell.redirect_with_flash's `fragment`/`added_media_id`): the
+   usual flash banner plus a small thumbnail of the image itself. */
+.upload-added { display: flex; align-items: center; gap: 0.6rem; }
+.upload-added img {
+  width: 2.75rem;
+  height: 2.75rem;
+  object-fit: cover;
+  border-radius: 0.3rem;
+  flex-shrink: 0;
+}
 
 /* -- lists standing in for tables --------------------------------------- */
 ul { list-style: none; margin: 0; padding: 0; }

@@ -13,6 +13,7 @@ dependencies = [
     "markdown-it-py>=3.0",        # Markdown -> HTML
     "nh3>=0.2",                   # HTML sanitizer (strips <script> etc.)
     "ghp-import>=2.1",            # push site/ to the gh-pages branch
+    "pillow>=12.3.0",             # resize/rotate/strip-EXIF uploaded images (#15 follow-up)
 ]
 
 [dependency-groups]
