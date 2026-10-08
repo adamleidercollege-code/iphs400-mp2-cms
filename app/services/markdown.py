@@ -117,3 +117,34 @@ def referenced_media_ids(markdown_text: str) -> set[int]:
     image — app.publish's cue for which uploaded files to copy into site/
     (only images actually used by published content, never a draft's)."""
     return {int(match) for match in _MEDIA_REF.findall(markdown_text)}
+
+
+# -- Formatting help box (#15 follow-up) ---------------------------------
+# The post editor's "Formatting help" box is for students who have never
+# seen Markdown, so its "you get" column is rendered through the real
+# `render()`/nh3 pipeline above rather than hand-written HTML: it can never
+# show the box promising formatting the sanitizer would actually strip.
+_FORMATTING_HELP_EXAMPLES = [
+    ("Section heading", "## Getting there"),
+    ("Bold", "**packing tips**"),
+    ("Italic", "*jet lag*"),
+    ("Quote", "> Pack light."),
+    ("Bullet list", "- Passport\n- Phone charger"),
+]
+_LINK_EXAMPLE = ("Link", "[the visa site](https://example.com)")
+
+
+def formatting_help_examples() -> list[dict]:
+    """[{label, you_type, you_get}, ...] for the post editor's Formatting
+    help box. The link example is only included if nh3 actually keeps the
+    rendered `<a href>` — if the sanitizer config ever tightens, the box
+    stops advertising a feature that no longer works instead of lying."""
+    examples = [
+        {"label": label, "you_type": source, "you_get": render(source)}
+        for label, source in _FORMATTING_HELP_EXAMPLES
+    ]
+    link_label, link_source = _LINK_EXAMPLE
+    link_html = render(link_source)
+    if "<a " in link_html:
+        examples.append({"label": link_label, "you_type": link_source, "you_get": link_html})
+    return examples

@@ -219,8 +219,10 @@ button.btn-danger:hover { background: var(--danger-dark); }
 }
 
 /* -- formatting help (#15 follow-up) ------------------------------------ */
-/* A small collapsible Markdown cheat-sheet next to the body field
-   (templates/admin/posts_form.html), closed by default via <details>. */
+/* A small Markdown cheat-sheet next to the body field (templates/admin/
+   posts_form.html), for students who have never seen Markdown before.
+   Open by default via <details open>; the summary doubles as a Hide/Show
+   toggle with no JS needed, via the [open] attribute selector below. */
 .formatting-help {
   border: 1px solid var(--border);
   border-radius: 0.6rem;
@@ -228,8 +230,37 @@ button.btn-danger:hover { background: var(--danger-dark); }
   margin: 0 0 1.5rem;
   background: #fff;
 }
-.formatting-help summary { cursor: pointer; font-weight: 600; }
+.formatting-help summary {
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+}
+.formatting-help summary::after {
+  content: "Show";
+  font-weight: 400;
+  color: var(--muted);
+}
+.formatting-help[open] summary::after { content: "Hide"; }
 .formatting-help ul { margin: 0.5rem 0; padding-left: 1.25rem; }
+.formatting-help .help-note { color: var(--muted); }
+/* The "You type" -> "You get" table: the right column is real sanitized
+   HTML (app.services.markdown.formatting_help_examples), so it can never
+   show formatting the sanitizer wouldn't actually allow. */
+.formatting-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+.formatting-table th, .formatting-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.formatting-table td:first-child code { white-space: pre-line; }
+.formatting-table td:last-child :first-child { margin-top: 0; }
+.formatting-table td:last-child :last-child { margin-bottom: 0; }
 
 /* -- lists standing in for tables --------------------------------------- */
 ul { list-style: none; margin: 0; padding: 0; }

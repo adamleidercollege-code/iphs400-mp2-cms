@@ -20,17 +20,28 @@
     <label>Body (Markdown)
       <textarea name="body" rows="10">{{ form_body }}</textarea>
     </label>
-    <details class="formatting-help">
+    <details class="formatting-help" open>
       <summary>Formatting help</summary>
+      <table class="formatting-table">
+        <thead>
+          <tr><th>You type</th><th>You get</th></tr>
+        </thead>
+        <tbody>
+          {% for example in formatting_help %}
+            <tr>
+              <td><code>{{ example.you_type }}</code></td>
+              <td>{{ example.you_get | safe }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="help-note">Your title above is already the big heading, so only use <code>##</code> for a heading inside the body.</p>
       <ul>
-        <li><code>## heading</code> &mdash; a section heading</li>
-        <li><code>&gt; quote</code> &mdash; a quoted line</li>
-        <li><code>**bold**</code> &mdash; bold text</li>
-        <li><code>*italic*</code> &mdash; italic text</li>
-        <li><code>- bullet</code> &mdash; a bullet list item</li>
+        <li>Leave a blank line between paragraphs &mdash; pressing Enter once doesn't start a new one.</li>
+        <li>Put a space after <code>##</code>, <code>&gt;</code>, and <code>-</code>.</li>
+        <li>Save to update the Preview at the top of the page.</li>
       </ul>
-      <p>Using "Add image" below puts the image line into the body for you
-        automatically &mdash; you don't need to type it yourself.</p>
+      <p class="help-note"><strong>Adding a photo:</strong> "Add image" puts the photo line at the end of your post. Cut and paste that whole line to where you want the photo, on its own line with a blank line above and below. Don't change the media number. Deleting the line removes the photo.</p>
     </details>
     <fieldset>
       <legend>Tags</legend>
@@ -69,7 +80,8 @@
         <label>Image file (JPG, PNG, or WEBP, up to 15&nbsp;MB)
           <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required>
         </label>
-        <label>Alt text <input type="text" name="alt_text" value="{{ cover.alt if cover else '' }}" required></label>
+        <label>Describe the photo for someone who can't see it.
+          <input type="text" name="alt_text" value="{{ cover.alt if cover else '' }}" required></label>
         <button type="submit">{{ "Replace cover" if cover else "Set cover" }}</button>
       </form>
     </div>
@@ -87,7 +99,8 @@
         <label>Image file (JPG, PNG, or WEBP, up to 15&nbsp;MB)
           <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required>
         </label>
-        <label>Alt text <input type="text" name="alt_text" required></label>
+        <label>Describe the photo for someone who can't see it.
+          <input type="text" name="alt_text" required></label>
         <button type="submit">Add image</button>
       </form>
       <p>The image is added to the end of the body as Markdown — move the

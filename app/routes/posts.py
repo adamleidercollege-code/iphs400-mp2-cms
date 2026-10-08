@@ -118,6 +118,7 @@ def _render_form(
         "cover": cover,
         "just_added": _just_added_media(request),
         "added_kind": request.query_params.get("added_kind"),
+        "formatting_help": markdown.formatting_help_examples(),
     })
     return templates.TemplateResponse(request, "admin/posts_form.html", context)
 

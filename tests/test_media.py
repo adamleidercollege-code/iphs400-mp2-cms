@@ -11,6 +11,7 @@ import io
 import os
 from pathlib import Path
 
+import nh3
 import pytest
 from PIL import Image
 
@@ -287,19 +288,55 @@ def test_invalid_upload_is_rejected_with_an_error_not_saved(client_as):
     assert models.list_all_pages()  # sanity: didn't blow up the fixture
 
 
-def test_editor_page_shows_a_formatting_help_box(client_as):
+def test_editor_page_shows_a_formatting_help_box_open_by_default(client_as):
     admin = models.get_user_by_email("admin@example.test")
     program = _seed_program(admin.id)
     c = client_as("editor")
     post = _create_draft_post(c, program.id)
 
     edit_page = c.get(f"/admin/posts/{post.id}/edit")
+    assert '<details class="formatting-help" open>' in edit_page.text
     assert "Formatting help" in edit_page.text
-    assert "## heading" in edit_page.text
-    assert "**bold**" in edit_page.text
-    assert "*italic*" in edit_page.text
-    assert "- bullet" in edit_page.text
-    assert "Add image" in edit_page.text.split("Formatting help")[1][:600]
+    # Each example's "you type" source and its real rendered "you get" HTML.
+    assert "## Getting there" in edit_page.text
+    assert "<h2>Getting there</h2>" in edit_page.text
+    assert "**packing tips**" in edit_page.text
+    assert "<strong>packing tips</strong>" in edit_page.text
+    assert "*jet lag*" in edit_page.text
+    assert "<em>jet lag</em>" in edit_page.text
+    assert "&gt; Pack light." in edit_page.text
+    assert "<blockquote>" in edit_page.text
+    assert "- Passport" in edit_page.text
+    assert "<li>Passport</li>" in edit_page.text
+    assert "[the visa site](https://example.com)" in edit_page.text
+    assert '<a href="https://example.com"' in edit_page.text
+    # The plain-language tips and the heading/image notes.
+    assert "already the big heading" in edit_page.text
+    assert "pressing Enter once doesn't start a new one" in edit_page.text
+    assert "Put a space after" in edit_page.text
+    assert "update the Preview at the top of the page" in edit_page.text
+    assert "Don't change the media number" in edit_page.text
+    # The alt-text hint, in both upload sections.
+    assert edit_page.text.count("Describe the photo for someone who can't see it.") == 2
+
+
+def test_formatting_help_examples_render_through_the_real_sanitizer():
+    examples = {e["label"]: e for e in markdown.formatting_help_examples()}
+
+    assert examples["Section heading"]["you_get"] == "<h2>Getting there</h2>\n"
+    assert examples["Bold"]["you_get"] == "<p><strong>packing tips</strong></p>\n"
+    assert examples["Italic"]["you_get"] == "<p><em>jet lag</em></p>\n"
+    assert "<blockquote>" in examples["Quote"]["you_get"]
+    assert "Pack light." in examples["Quote"]["you_get"]
+    assert examples["Bullet list"]["you_get"].count("<li>") == 2
+    # Only included because nh3 actually keeps the <a href> — if the
+    # sanitizer config ever tightened, this example would disappear with it.
+    assert "example.com" in examples["Link"]["you_get"]
+    assert nh3.clean("<a href='x'>x</a>")  # the sanitizer does allow <a> at all
+    for example in examples.values():
+        # Never raw/unsanitized: every "you get" is nh3's own output, so it
+        # can't contain anything nh3 itself would strip (e.g. a script tag).
+        assert example["you_get"] == nh3.clean(example["you_get"])
 
 
 # -- Inline images in a Post's body -------------------------------------------
