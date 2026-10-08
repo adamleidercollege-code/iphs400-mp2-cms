@@ -8,24 +8,25 @@
   - Q12: Kept the WordPress-style landing (site preview as home, sidebar tabs) instead of a plain dashboard page.
   - Spec flag 3: Claude assumed Staff drafts get deleted on deactivation like Ambassadors'. I changed it so Staff drafts are kept.
 - My own additions: pending "submit for review" status, Continent→Country→Program page tree with demo data, topics on posts with a filter, footer pages (About/Contact), nav bar + breadcrumbs, ambassador drafts deleted when deactivated, "are you sure?" before delete.
-- Scope cuts I chose: trash/auto-delete, scheduled publishing, suggested edits, messaging/comments (all need a live server or extra features). Search kept as a stretch ticket.
+- Added later as stretch: tags, search, media uploads, and a Formatting help box for students who don't know Markdown.
+- Scope cuts I chose: trash/auto-delete, scheduled publishing, suggested edits, messaging/comments (all need a live server or extra features). Search was kept as a stretch ticket and later built (#10).
 
 ## Q2: Drift (what the AI made up + what caught it)
 - Spec #1: Claude filled in decisions I never made (slug -2/-3 suffixes, Staff can't publish others' drafts directly, Staff drafts deleted on deactivation). Caught by reading the spec before tickets.
 - T01 (#2): code showed raw role codes "admin/editor" in the UI instead of Staff/Ambassador from CONTEXT.md. Caught by /code-review. Fixed with User.role_label.
 - Design passes (T11): Claude started calling posts "dispatches" in the hero, footer and headings. Not in CONTEXT.md, where the term is "Post". I caught it by reading the live site and had it changed to match the glossary.
 - The admin console had never loaded its stylesheet (relative "style.css" 404'd on every nested admin page). Every ticket's tests and reviews passed anyway; it was only caught when taking the required screenshots. Fixed under its own issue, #13.
+- PR #17 (media): review caught that a post could reference another post's or a draft's image ID, leaking unpublished images to the public site. Fixed before merge.
 
 ## Q3: Skills, prompts, resources
-- Skills: /grill-with-docs, /to-spec, /to-tickets, /implement, /tdd, /code-review, /setup-matt-pocock-skills
+- Skills: /grill-with-docs, /to-spec, /to-tickets, /implement, /tdd, /code-review, /handoff, /setup-matt-pocock-skills
 
 - Prompts I actually used (quote these word for word in the README):
-  - Prompt 1 (grill answer A3, my own words):
-    "A CGE staff member should be able to write posts as well if they desire, they should possess all the tools that the ambassador role provides. The role names can be staff and ambassador."
+  - Prompt 1 (grill answer A3, session 16):
+    "A CGE staff member should be able to write posts as well if they desire; they should have all the tools the ambassador role has. The role names shown in the site and CONTEXT.md can be Staff and Ambassador, but in the code they stay admin (Staff) and editor (Ambassador)."
   - Prompt 2 (test seams, before /to-spec):
     "Those two seams match was I was expecting, but could you also do a third one: a small services layer for the pure rules like slug generation, the status transitions (who can move a post from a draft to pending to published and back), and what happens to an ambassadors posts when they're deactivated. Those rules are really the core of how the CGE's review works, so I want them to be tested directly as opposed to only through HTTP, and this will keep the code splits into models, routes, templates, and services."
   - How I started: the /grill-with-docs kickoff for the CGE study abroad blog (mostly drafted with help).
-  - TODO: check both quotes against docs/transcripts/ to make sure they match exactly what I sent.
 
 ## Q4: Budget + what I'd add next
 - Plan said opusplan/Opus high for grill/spec/tickets. Ledger shows it ran on Sonnet 5 high. I believe my computer restarted and I forgot to shift the model back when I began again.
@@ -46,12 +47,13 @@
 - The "0% weekly per ticket" is a rounding artifact: the weekly meter only moves in whole numbers, so T01 cost under 1%, not zero.
 - The "Test" model in the setup row is a fake test row from Oct 1, not real usage. I left it in the ledger rather than edit graded evidence.
 - 16 turns are "unlabelled" because I didn't always set the phase before starting work.
-- Next: trash with restore, scheduled publishing, suggested edits, private messaging, visitor accounts, search filters by views.
 - usage_report.py after T03 (Oct 5, 5 pm):
   - T01 5% of a 5h window / 1% weekly · T02 17% / 5% · T03 15% / 2%
   - Avg ~12% of a window and 2.7% weekly per ticket, vs my plan of 30% per ticket. I overestimated by more than half.
   - T02 cost the most (four review fixes + first deploy). T03's hung review added cost too.
   - Forecast: 5 tickets need ~13% of the weekly cap, 54% remains → FITS.
+- Next: trash with restore, scheduled publishing, suggested edits, private messaging, visitor accounts, search filters by views, a Preview pane for the page editor (the post editor has one). See notes/future-work.md.
+- Considered adding comments, view counts, visitor accounts and private messaging after the core build, but they all need a live server. Free hosting tiers wipe the SQLite database on sleep (Render's free Postgres also expires after 30 days), and paid hosting is ~$4–5/month (Fly.io) plus the security, moderation and student-privacy responsibilities. Kept them as future work; giscus (GitHub Discussions) comments would be the cheapest first step.
 
 ## Real model failures (README needs at least 1)
 - Claude ran the submission checker with the wrong Python, reported a test failure that wasn't real, then caught and corrected it.
@@ -61,6 +63,8 @@
 - Claude committed T07 but didn't push, so issue #8 stayed open. Added a CLAUDE.md rule to push and confirm CLOSED.
 - Claude said it couldn't take screenshots until I had it install Playwright.
 - While verifying flash messages, Claude created a stray "Flash Test" account in my real local demo database instead of a test copy. It caught and deleted it before the screenshots.
+- Claude (chat) told me "Add image" inserts the Markdown line for you as if it were fact before checking; I asked, and it admitted it was inferring. It turned out to be true (it appends to the end), but I had it verified before writing the help box around it.
+- #13: the admin console was never styled (style.css 404) through the whole build; nobody noticed until the screenshot step.
 
 ## Things that went wrong (good for report voice)
 - Grill session crashed twice; recovered with claude --resume / fg after accidentally hitting Ctrl+Z.
@@ -107,6 +111,10 @@
 - Claude removed a T07 test assertion that checked the old Ambassador landing page. Legit, since T08 replaced that page, but worth noting that tests changed.
 - Review found no bugs. 150 tests passing. All 8 core tickets done.
 
+## T09 (#10): site search
+- T09 in the usage table = search (#10, PR #16). Search runs entirely in the browser from a JSON index built at publish time, so it works on GitHub Pages with no server.
+- One T09 ledger row is a stray from a later session (Oct 8) that started before the phase label was switched, so T09's numbers (especially the 5% weekly) are only rough.
+
 ## T10 (#11) + T11 (#12): design
 - My own ticket, added after T05: the site was purple but narrow and plain. Full-width layout, home hero, card grids, Kenyon purple + gold, Fraunces/Inter fonts, footer disclaimer that it's a demo, not an official Kenyon page.
 - Review found no bugs, two small nits fixed. 150 tests passing.
@@ -135,6 +143,62 @@
 ## Stage 1 (Oct 5)
 - check_submission flagged admin templates using "/..." links (fixed), the missing mp2-mvp tag (tagged), and "secrets in history": 2 false positives inside transcripts, not real keys. Didn't rewrite history; explained it in my Stage 1 email.
 
+## Stretch: tags (#14), search (#10, PR #16), media (#15, PR #17)
+
+- Tags (#14): Staff-only creation; filter within a program; starter tags visa/budget/homestay/travel/classes.
+- Search (#10, PR #16): scoped to a section or sitewide; Title/Text/Tags checkboxes.
+- Media (#15, PR #17): post covers + images inside posts set by the author; program covers Staff-only.
+- Search and media built on branches and merged through PRs instead of straight to main. I reviewed each PR and commented before merging.
+  - I did this for the extra credit, and also because I wanted to look at the search changes before merging onto the main code.
+- PR #17 review caught a security bug before merge: a post could reference another post's or a draft's image ID and publish it. Fixed before merging; posts can now only use images they own.
+  - This showed me that even with reviews one needs to be careful. Especially with AI code and testing, the review phase needs to be extremely meticulous. 
+
+### Images: what went wrong and what changed
+- Placeholder gradient images looked like empty orange boxes; the same image showed as cover and inline; a one-card topic section was misaligned. Fixed in 7be5c67 with 7 real Wikimedia Commons photos + a Photo Credits page in the footer.
+- I spotted an inline photo overflowing the post text box on the live site. Cause: no width rule on images inside posts. Fixed in 87d7603 (+ test).
+- Upload check found: no resizing, only a 5 MB cap; preview hard to find after upload; cover/inline forms looked identical.
+- Fixed in 690e8cc: uploads resized to max 1600px, rotated upright, EXIF/GPS location data removed, limit raised to 15 MB; returns to the image section with a thumbnail; each upload form in its own box.
+ - Removing location data is a good choice for privacy reasons, especially for students studying abroad in insecure locations and situations. 
+
+### My hands-on test (Oct 8)
+- Ran the server locally; logged in as Ambassador (Jordan) and Staff (Dana); wrote, submitted, and published a post; confirmed Ambassador is refused on Users.
+- Found the raw Markdown editor would confuse students who don't know Markdown.
+- Added a "Formatting help" box (63a059c), open by default, "You type → You get" examples checked through the real sanitizer, tips on blank lines/spaces/moving the photo line, alt text reworded to "Describe the photo for someone who can't see it." Added to the page editor too (2e7e941). 226 tests passing.
+- Asked why there's no login button on the public site: GitHub Pages has no server, so it would be a dead link (same reason as ADR-003). Decided not to add one.
+  - Testing it myself was extremely helpful, allowing me to see issues that I may not have seen just through overseeing and communicating with Claude Code. I got to interact with the site as a user, and was able to give feedback from that new understanding.
+
 ## Placeholder slot
-- Final usage_report.py (after the last deploy): PASTE HERE
+- Final usage_report.py (after the last deploy):  
+  - phase          turns  5h spent   weekly  models / provider
+    T01                8      5.0%     1.0%  Sonnet 5
+    T02               23     17.0%     5.0%  Sonnet 5
+    T03               13     15.0%     2.0%  Sonnet 5
+    T04                8      9.0%     2.0%  Sonnet 5
+    T05               13     12.0%     2.0%  Sonnet 5
+    T06                9      8.0%     1.0%  Sonnet 5
+    T07                6      7.0%     1.0%  Sonnet 5
+    T08                3      5.0%     1.0%  Sonnet 5
+    T09                3      2.0%     5.0%  Sonnet 5
+    T10                7      4.0%     1.0%  Sonnet 5
+    T11               17     94.0%    15.0%  Opus 5,Sonnet 5
+    T15               14     46.0%     7.0%  Sonnet 5
+    grill             14     23.0%     6.0%  Sonnet 5
+    issue-13           3      8.0%     1.0%  Sonnet 5
+    media              1      0.0%     0.0%  Sonnet 5
+    search             1      0.0%     0.0%  Sonnet 5
+    setup             14     16.0%    14.0%  Opus 5,Sonnet 5,Test
+    spec               4      4.0%     1.0%  Sonnet 5
+    tags              11     18.0%     3.0%  Sonnet 5
+    tickets            3      4.0%     1.0%  Sonnet 5
+    unlabelled        16     10.0%     2.0%  Sonnet 5
+
+Tickets done: 12 · average weekly cost per ticket: 3.6%
+
+- Core tickets T01–T08: 78% of one 5h window total, ~10% each, vs my plan of 30% each. 15% weekly total.
+- T11 (Opus design pass): 94% of a 5h window and 15% weekly, more than all 8 core tickets combined.
+- Extras cost more than the core: T15 (images + follow-ups) 46%, tags 18%, #13 8%.
+- Whole project: ~307% of a 5h window (about three full windows), ~71 points of weekly cap.
+- "search" and "media" show ~0% because that work was logged under other phase labels (T15/tags), same issue as the unlabelled turns.
+- The final 3.6% weekly per ticket is higher than the 2.7% after T03 because it includes the design and stretch tickets.
+
 - The Opus design pass hit my 5h limit. Opus has better design taste but burns the window much faster than Sonnet.
