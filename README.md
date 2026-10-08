@@ -69,7 +69,7 @@ While I made the majority of design decisions in this project, Claude did help w
 Built with [Claude Code](https://claude.com/claude-code) (Anthropic), using these
 Claude Code skills throughout the grill → spec → tickets → implement → review loop:
 `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/tdd`, `/code-review`,
-`/handoff`, `/setup-matt-pocock-skills`.
+`/handoff`, `/setup-matt-pocock-skills`, `/wait-what`, `/ask-matt`.
 
 ### Backends used
 

@@ -19,7 +19,7 @@
 - PR #17 (media): review caught that a post could reference another post's or a draft's image ID, leaking unpublished images to the public site. Fixed before merge.
 
 ## Q3: Skills, prompts, resources
-- Skills: /grill-with-docs, /to-spec, /to-tickets, /implement, /tdd, /code-review, /handoff, /setup-matt-pocock-skills
+- Skills: /grill-with-docs, /to-spec, /to-tickets, /implement, /tdd, /code-review, /handoff, /setup-matt-pocock-skills, /wait-what, /ask-matt
 
 - Prompts I actually used (quote these word for word in the README):
   - Prompt 1 (grill answer A3, session 16):
