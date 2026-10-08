@@ -78,7 +78,7 @@ Claude Code skills throughout the grill → spec → tickets → implement → r
 | anthropic | Sonnet 5 | 190 | grill, spec, tickets, implementation, review, and deploy — nearly the whole project |
 | anthropic | Opus 5 | 4 | setup and the T11 design pass (better design taste, but burned the 5-hour usage window much faster than Sonnet) |
 | anthropic | Test | 2 | a fake row from an Oct 1 ledger test, not real usage — left in `notes/usage-ledger.csv` rather than edit graded evidence |
-| anthropic | Claude (claude.ai chat) | not in ledger | step-by-step guidance and drafting prompts for Claude Code; not tracked by the usage ledger |
+| anthropic | Opus 5.5 (claude.ai chat) | not in ledger | step-by-step guidance and drafting prompts for Claude Code; not tracked by the usage ledger |
 
 No non-Anthropic backend (e.g. OpenRouter, Z.ai) was used anywhere in this project — every row in the ledger is `anthropic`.
 
