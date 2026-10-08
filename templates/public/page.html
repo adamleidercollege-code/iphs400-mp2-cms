@@ -76,6 +76,7 @@
         <ul class="card-grid">
           {% for item in children %}
             <li class="card{% if item.region is not none %} region-{{ item.region }}{% endif %}">
+              {% if item.cover %}<img class="card-cover" src="{{ item.cover.href }}" alt="{{ item.cover.alt }}">{% endif %}
               <h3 class="card-title"><a class="card-link" href="{{ item.href }}">{{ item.title }}</a></h3>
               {% if item.excerpt %}<p class="card-desc">{{ item.excerpt }}</p>{% endif %}
               {% if item.post_count is not none %}

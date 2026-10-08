@@ -155,6 +155,7 @@ class Page:
     created_at: str
     updated_at: str
     published_at: str | None
+    cover_media_id: int | None
 
 
 def _row_to_page(row: sqlite3.Row) -> Page:
@@ -170,6 +171,7 @@ def _row_to_page(row: sqlite3.Row) -> Page:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         published_at=row["published_at"],
+        cover_media_id=row["cover_media_id"],
     )
 
 
@@ -357,6 +359,66 @@ def delete_page(page_id: int) -> None:
         conn.close()
 
 
+def set_page_cover(page_id: int, media_id: int | None) -> Page:
+    conn = db.get_connection()
+    try:
+        conn.execute(
+            "UPDATE pages SET cover_media_id = ? WHERE id = ?", (media_id, page_id)
+        )
+        conn.commit()
+        return get_page_by_id(page_id)
+    finally:
+        conn.close()
+
+
+@dataclass(frozen=True)
+class Media:
+    id: int
+    filename: str
+    content_type: str
+    size: int
+    alt_text: str
+    uploaded_by: int | None
+    created_at: str
+
+
+def _row_to_media(row: sqlite3.Row) -> Media:
+    return Media(
+        id=row["id"],
+        filename=row["filename"],
+        content_type=row["content_type"],
+        size=row["size"],
+        alt_text=row["alt_text"],
+        uploaded_by=row["uploaded_by"],
+        created_at=row["created_at"],
+    )
+
+
+def create_media(
+    filename: str, content_type: str, size: int, alt_text: str, uploaded_by: int | None
+) -> Media:
+    conn = db.get_connection()
+    try:
+        cur = conn.execute(
+            "INSERT INTO media (filename, content_type, size, alt_text, uploaded_by) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (filename, content_type, size, alt_text, uploaded_by),
+        )
+        conn.commit()
+        return get_media_by_id(cur.lastrowid)
+    finally:
+        conn.close()
+
+
+def get_media_by_id(media_id: int) -> Media | None:
+    conn = db.get_connection()
+    try:
+        row = conn.execute("SELECT * FROM media WHERE id = ?", (media_id,)).fetchone()
+        return _row_to_media(row) if row else None
+    finally:
+        conn.close()
+
+
 @dataclass(frozen=True)
 class Tag:
     id: int
@@ -441,6 +503,7 @@ class Post:
     created_at: str
     updated_at: str
     published_at: str | None
+    cover_media_id: int | None
 
 
 def _row_to_post(row: sqlite3.Row) -> Post:
@@ -456,6 +519,7 @@ def _row_to_post(row: sqlite3.Row) -> Post:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         published_at=row["published_at"],
+        cover_media_id=row["cover_media_id"],
     )
 
 
@@ -690,6 +754,18 @@ def delete_post(post_id: int) -> None:
     try:
         conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def set_post_cover(post_id: int, media_id: int | None) -> Post:
+    conn = db.get_connection()
+    try:
+        conn.execute(
+            "UPDATE posts SET cover_media_id = ? WHERE id = ?", (media_id, post_id)
+        )
+        conn.commit()
+        return get_post_by_id(post_id)
     finally:
         conn.close()
 

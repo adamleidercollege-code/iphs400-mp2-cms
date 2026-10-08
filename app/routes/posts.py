@@ -11,12 +11,12 @@ service whether the action is allowed, and persists the result.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.templating import Jinja2Templates
 
 from app import models, settings
 from app.routes.auth import require_user, verify_csrf
-from app.services import console_shell, markdown, review_gate
+from app.services import console_shell, markdown, media_store, post_view, review_gate
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -94,6 +94,10 @@ def _render_form(
         tag_ids if tag_ids is not None
         else [t.id for t in models.get_tags_for_post(post.id)] if post else []
     )
+    cover = (
+        post_view.media_cover(post.cover_media_id, post_view.media_href_for("/"))
+        if post else None
+    )
     context = console_shell.console_context(request, user)
     context.update({
         "title": "Edit post" if post else "New post",
@@ -104,9 +108,10 @@ def _render_form(
         "form_body": body,
         "form_topic": topic,
         "form_tag_ids": selected_tag_ids,
-        "preview_html": markdown.render(body),
+        "preview_html": markdown.render(body, media_href=post_view.media_href_for("/")),
         "topics": models.TOPIC_CHOICES,
         "tags": models.list_tags(),
+        "cover": cover,
     })
     return templates.TemplateResponse(request, "admin/posts_form.html", context)
 
@@ -288,3 +293,66 @@ async def unpublish_post(
     _apply_transition(user, post, "unpublish")
     return console_shell.redirect_with_flash(
         f"/admin/posts?program_id={post.program_id}", "Post unpublished.")
+
+
+@router.post("/{post_id}/cover")
+async def set_post_cover(
+    request: Request,
+    post_id: int,
+    image: UploadFile = File(...),
+    alt_text: str = Form(""),
+    user: models.User = Depends(require_user),
+    _csrf: None = Depends(verify_csrf),
+):
+    post = _get_post_or_404(post_id)
+    _authorize_post_write(user, post)
+    program = _get_program_or_404(post.program_id)
+    alt_text = alt_text.strip()
+    if not alt_text:
+        return _render_form(request, user, post=post, program=program,
+                             error="Alt text is required for the cover image.",
+                             title=post.title, body=post.body, topic=post.topic)
+    data = await image.read()
+    try:
+        filename, content_type, size = media_store.save_upload(data, user.id)
+    except media_store.UploadRejected as exc:
+        return _render_form(request, user, post=post, program=program,
+                             error=str(exc), title=post.title, body=post.body,
+                             topic=post.topic)
+    media = models.create_media(filename=filename, content_type=content_type,
+                                 size=size, alt_text=alt_text, uploaded_by=user.id)
+    models.set_post_cover(post.id, media.id)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts/{post.id}/edit", "Cover image set.")
+
+
+@router.post("/{post_id}/images")
+async def add_post_image(
+    request: Request,
+    post_id: int,
+    image: UploadFile = File(...),
+    alt_text: str = Form(""),
+    user: models.User = Depends(require_user),
+    _csrf: None = Depends(verify_csrf),
+):
+    post = _get_post_or_404(post_id)
+    _authorize_post_write(user, post)
+    program = _get_program_or_404(post.program_id)
+    alt_text = alt_text.strip()
+    if not alt_text:
+        return _render_form(request, user, post=post, program=program,
+                             error="Alt text is required before an image can be added.",
+                             title=post.title, body=post.body, topic=post.topic)
+    data = await image.read()
+    try:
+        filename, content_type, size = media_store.save_upload(data, user.id)
+    except media_store.UploadRejected as exc:
+        return _render_form(request, user, post=post, program=program,
+                             error=str(exc), title=post.title, body=post.body,
+                             topic=post.topic)
+    media = models.create_media(filename=filename, content_type=content_type,
+                                 size=size, alt_text=alt_text, uploaded_by=user.id)
+    new_body = post.body.rstrip() + f"\n\n![{alt_text}](media/{media.id})\n"
+    models.update_post(post_id, title=post.title, body=new_body, topic=post.topic)
+    return console_shell.redirect_with_flash(
+        f"/admin/posts/{post.id}/edit", "Image added to the post.")

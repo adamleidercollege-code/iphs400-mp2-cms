@@ -2,11 +2,20 @@
 from __future__ import annotations
 
 import re
+from typing import Callable
 
 from markdown_it import MarkdownIt
 import nh3
 
 _md = MarkdownIt()
+# A Post's body references an uploaded image as `![alt](media/<id>)` (#15) —
+# a placeholder that looks like a relative path (so nh3 never strips it as
+# an unknown URL scheme) but isn't a real one: the actual relative path to
+# site/media/ or the live /media/ route depends on how deep the page or post
+# being rendered sits, which the body text itself can't know. `render`'s
+# `media_href` callback resolves each one at render time, same idea as
+# app.publish's per-page `site_root`.
+_MEDIA_SRC = re.compile(r'src="media/(\d+)"')
 _MD_LIST_BULLET = re.compile(r"(?m)^[ \t]*[-*+][ \t]+")
 # Styling markers that always sit directly against a word (**bold**, `code`,
 # # heading, > quote) — safe to delete outright. Deleting rather than
@@ -27,10 +36,17 @@ _SPACE_BEFORE_PUNCT = re.compile(r"\s+([.,;:!?])")
 _H2_SPLIT = re.compile(r"(?m)^##[ \t]+(.+?)[ \t]*$")
 
 
-def render(markdown_text: str) -> str:
+def render(markdown_text: str, media_href: Callable[[int], str] | None = None) -> str:
     """Render Markdown to HTML and strip anything an Ambassador could use to
-    inject a script (hard constraint: sanitize before rendering anywhere)."""
-    return nh3.clean(_md.render(markdown_text))
+    inject a script (hard constraint: sanitize before rendering anywhere).
+
+    `media_href`, if given, resolves each `media/<id>` placeholder image src
+    (see _MEDIA_SRC above) to the real relative href for this render.
+    """
+    html = nh3.clean(_md.render(markdown_text))
+    if media_href is not None:
+        html = _MEDIA_SRC.sub(lambda m: f'src="{media_href(int(m.group(1)))}"', html)
+    return html
 
 
 def plain_text(markdown_text: str) -> str:
@@ -84,3 +100,13 @@ def strip_sections(markdown_text: str) -> str:
     behind."""
     match = _H2_SPLIT.search(markdown_text)
     return markdown_text[: match.start()].strip() if match else markdown_text.strip()
+
+
+_MEDIA_REF = re.compile(r"\(media/(\d+)\)")
+
+
+def referenced_media_ids(markdown_text: str) -> set[int]:
+    """Every Media id this body's Markdown source references as an inline
+    image — app.publish's cue for which uploaded files to copy into site/
+    (only images actually used by published content, never a draft's)."""
+    return {int(match) for match in _MEDIA_REF.findall(markdown_text)}

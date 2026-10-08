@@ -6,12 +6,12 @@ stub route.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.templating import Jinja2Templates
 
 from app import models, settings
 from app.routes.auth import require_admin, verify_csrf
-from app.services import console_shell
+from app.services import console_shell, media_store, post_view
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -30,12 +30,19 @@ def _render_form(
     error: str | None = None,
 ):
     parent = _get_page_or_404(parent_id)
+    is_program = page is not None and models.is_program_page(page)
+    cover = (
+        post_view.media_cover(page.cover_media_id, post_view.media_href_for("/"))
+        if page else None
+    )
     context = console_shell.console_context(request, user)
     context.update({
         "title": "Edit page" if page else "New page",
         "page": page,
         "parent": parent,
         "error": error,
+        "is_program": is_program,
+        "cover": cover,
     })
     return templates.TemplateResponse(request, "admin/pages_form.html", context)
 
@@ -141,3 +148,32 @@ async def delete_page(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return console_shell.redirect_with_flash("/admin/pages", "Page deleted.")
+
+
+@router.post("/{page_id}/cover")
+async def set_page_cover(
+    request: Request,
+    page_id: int,
+    image: UploadFile = File(...),
+    alt_text: str = Form(""),
+    user: models.User = Depends(require_admin),
+    _csrf: None = Depends(verify_csrf),
+):
+    page = _get_page_or_404(page_id)
+    if not models.is_program_page(page):
+        raise HTTPException(status_code=400, detail="Only a Program page has a cover image")
+    alt_text = alt_text.strip()
+    if not alt_text:
+        return _render_form(request, user, page=page, parent_id=page.parent_id,
+                             error="Alt text is required for the cover image.")
+    data = await image.read()
+    try:
+        filename, content_type, size = media_store.save_upload(data, user.id)
+    except media_store.UploadRejected as exc:
+        return _render_form(request, user, page=page, parent_id=page.parent_id,
+                             error=str(exc))
+    media = models.create_media(filename=filename, content_type=content_type,
+                                 size=size, alt_text=alt_text, uploaded_by=user.id)
+    models.set_page_cover(page.id, media.id)
+    return console_shell.redirect_with_flash(
+        f"/admin/pages/{page.id}/edit", "Cover image set.")

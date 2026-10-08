@@ -14,7 +14,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import db, settings
-from app.routes import accounts, auth, console, pages, posts, public, tags
+from app.routes import accounts, auth, console, media, pages, posts, public, tags
 from app.routes.auth import AdminRequired, CsrfInvalid, LoginRequired
 
 
@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(accounts.router)
     app.include_router(tags.router)
     app.include_router(console.router)
+    app.include_router(media.router)
 
     # Catch-all last: the live public site, read straight from the database —
     # the admin console's "preview" of what `cms publish` will later export.

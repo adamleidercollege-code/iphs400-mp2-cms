@@ -307,6 +307,22 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
   color: var(--muted);
   margin: 0.5rem 0 0;
 }
+.card-cover {
+  display: block;
+  width: calc(100% + 3rem);
+  height: 9rem;
+  margin: -1.4rem -1.5rem 1rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  object-fit: cover;
+}
+.post-cover {
+  display: block;
+  width: 100%;
+  height: 18rem;
+  margin: 1.5rem 0 0;
+  border-radius: 0.9rem;
+  object-fit: cover;
+}
 .card-stats {
   display: flex;
   flex-wrap: wrap;
@@ -587,6 +603,7 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 }
 @media (max-width: 30rem) {
   :root { --section-gap: 2.5rem; }
+  .post-cover { height: 11rem; }
   .header-inner { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .site-nav { gap: 0.4rem 1.1rem; }
   .site-footer-nav { gap: 0.4rem 1.25rem; }
@@ -683,6 +700,11 @@ def render_site(out: Path | None = None) -> Path:
     page_template = env.get_template("public/page.html")
     post_template = env.get_template("public/post.html")
 
+    # Only images actually used by published content are copied into
+    # site/media/ below — a draft's or pending Post's media never reaches it,
+    # same rule as its HTML never does (#15).
+    used_media_ids: set[int] = set()
+
     # Search (#10): one JSON file at the site root, containing only published
     # Posts — a draft or pending Post never reaches it, same gate as the HTML
     # below. Every page links to it root-relatively via its own site_root.
@@ -697,6 +719,9 @@ def render_site(out: Path | None = None) -> Path:
         css_path, nav, footer_links, site_root = _furniture(
             chain, home, continents, footer_pages, chains, active_id
         )
+        media_href = post_view.media_href_for(site_root)
+        if page.cover_media_id:
+            used_media_ids.add(page.cover_media_id)
         search_index_href = site_root + "search-index.json"
         breadcrumb = [
             {"title": a.title, "href": _relative_link(chain, chains[a.id])}
@@ -710,6 +735,7 @@ def render_site(out: Path | None = None) -> Path:
             post_view.page_card(
                 c, _relative_link(chain, chains[c.id]), home, continents,
                 stats=post_view.program_stats(c.id) if is_country else None,
+                media_href=media_href,
             )
             for c in models.list_published_children(page.id)
         ]
@@ -719,9 +745,14 @@ def render_site(out: Path | None = None) -> Path:
         if is_program:
             posts = models.list_published_posts_by_program(page.id)
             post_groups = post_view.grouped_post_summaries(
-                posts, lambda post: _relative_link(chain, chain + [post.slug])
+                posts, lambda post: _relative_link(chain, chain + [post.slug]),
+                media_href=media_href,
             )
             tag_filters = post_view.distinct_tags(post_groups)
+            for post in posts:
+                if post.cover_media_id:
+                    used_media_ids.add(post.cover_media_id)
+                used_media_ids |= markdown.referenced_media_ids(post.body)
 
         intro_md, rest_md = markdown.split_intro(page.body)
         sections = []
@@ -765,13 +796,15 @@ def render_site(out: Path | None = None) -> Path:
                 post_css_path, post_nav, post_footer_links, post_site_root = _furniture(
                     post_chain, home, continents, footer_pages, chains, active_id
                 )
+                post_media_href = post_view.media_href_for(post_site_root)
                 post_breadcrumb = [
                     {"title": a.title, "href": _relative_link(post_chain, chains[a.id])}
                     for a in models.list_ancestors(page)
                 ] + [{"title": page.title, "href": _relative_link(post_chain, chain)}]
                 more_from = [
                     post_view.post_summary(
-                        other, _relative_link(post_chain, chain + [other.slug])
+                        other, _relative_link(post_chain, chain + [other.slug]),
+                        media_href=post_media_href,
                     )
                     for other in models.list_published_posts_by_program(page.id)
                     if other.id != post.id
@@ -781,11 +814,12 @@ def render_site(out: Path | None = None) -> Path:
                     post=post,
                     topic_label=summary["topic_label"],
                     tags=summary["tags"],
+                    cover=post_view.media_cover(post.cover_media_id, post_media_href),
                     author_name=summary["author_name"],
                     author_role=summary["author_role"],
                     author_initials=summary["author_initials"],
                     published_date=summary["published_date"],
-                    body_html=markdown.render(post.body),
+                    body_html=markdown.render(post.body, media_href=post_media_href),
                     region=post_view.region_index(page, home, continents),
                     css_path=post_css_path,
                     nav=post_nav,
@@ -800,5 +834,16 @@ def render_site(out: Path | None = None) -> Path:
                 post_dir = out.joinpath(*post_chain)
                 post_dir.mkdir(parents=True, exist_ok=True)
                 (post_dir / "index.html").write_text(post_html)
+
+    if used_media_ids:
+        media_out = out / "media"
+        media_out.mkdir(parents=True, exist_ok=True)
+        for media_id in used_media_ids:
+            media = models.get_media_by_id(media_id)
+            if media is None:
+                continue
+            src = settings.MEDIA_DIR / media.filename
+            if src.is_file():
+                shutil.copy2(src, media_out / media.filename)
 
     return out

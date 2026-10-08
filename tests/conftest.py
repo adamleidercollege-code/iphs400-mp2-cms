@@ -40,6 +40,7 @@ def seeded_db(tmp_path, monkeypatch) -> None:
     """Point the app at a fresh per-test SQLite file, seeded with DEMO_USERS
     plus one deactivated user — independent of the developer's own .env."""
     monkeypatch.setattr(settings, "DATABASE_PATH", tmp_path / "test.db")
+    monkeypatch.setattr(settings, "MEDIA_DIR", tmp_path / "uploads")
 
     from app import db, models
 

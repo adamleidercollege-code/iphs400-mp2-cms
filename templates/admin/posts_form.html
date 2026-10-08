@@ -37,4 +37,33 @@
   </form>
   <h2>Preview</h2>
   <div class="post-preview">{{ preview_html | safe }}</div>
+
+  {% if post %}
+    <h2>Cover image</h2>
+    {% if cover %}
+      <p><img src="{{ cover.href }}" alt="{{ cover.alt }}" style="max-width:16rem;border-radius:0.5rem;"></p>
+    {% else %}
+      <p>No cover image set yet.</p>
+    {% endif %}
+    <form method="post" action="/admin/posts/{{ post.id }}/cover" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Image file (JPG, PNG, or WEBP, up to 5&nbsp;MB)
+        <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required>
+      </label>
+      <label>Alt text <input type="text" name="alt_text" value="{{ cover.alt if cover else '' }}" required></label>
+      <button type="submit">{{ "Replace cover" if cover else "Set cover" }}</button>
+    </form>
+
+    <h2>Add an image to the body</h2>
+    <form method="post" action="/admin/posts/{{ post.id }}/images" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Image file (JPG, PNG, or WEBP, up to 5&nbsp;MB)
+        <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required>
+      </label>
+      <label>Alt text <input type="text" name="alt_text" required></label>
+      <button type="submit">Add image</button>
+    </form>
+    <p>The image is added to the end of the body as Markdown — move the
+      <code>![alt](media/…)</code> line above to where you want it in the text.</p>
+  {% endif %}
 {% endblock %}
