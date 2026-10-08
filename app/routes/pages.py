@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import models, settings
 from app.routes.auth import require_admin, verify_csrf
-from app.services import console_shell, media_store, post_view
+from app.services import console_shell, markdown, media_store, post_view
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES))
 
@@ -44,6 +44,12 @@ def _render_form(
         "is_program": is_program,
         "cover": cover,
         "just_added": _just_added_media(request),
+        "formatting_help": markdown.formatting_help_examples(),
+        # A Page has no live Preview pane and no inline "Add image" upload
+        # (only a Program's cover, above) — the shared formatting-help
+        # partial drops the tips that mention either.
+        "show_preview_tip": False,
+        "show_image_tip": False,
     })
     return templates.TemplateResponse(request, "admin/pages_form.html", context)
 

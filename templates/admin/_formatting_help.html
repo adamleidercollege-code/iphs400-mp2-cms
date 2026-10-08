@@ -1,0 +1,33 @@
+{# Shared Markdown cheat-sheet for the post and page editors (#15
+   follow-up). Context: `formatting_help` (from
+   app.services.markdown.formatting_help_examples()), and the optional
+   `show_preview_tip` / `show_image_tip` flags (default true) — the page
+   editor has no live Preview pane and no inline "Add image" upload, so it
+   passes both as false. #}
+<details class="formatting-help" open>
+  <summary>Formatting help</summary>
+  <table class="formatting-table">
+    <thead>
+      <tr><th>You type</th><th>You get</th></tr>
+    </thead>
+    <tbody>
+      {% for example in formatting_help %}
+        <tr>
+          <td><code>{{ example.you_type }}</code></td>
+          <td>{{ example.you_get | safe }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="help-note">Your title above is already the big heading, so only use <code>##</code> for a heading inside the body.</p>
+  <ul>
+    <li>Leave a blank line between paragraphs &mdash; pressing Enter once doesn't start a new one.</li>
+    <li>Put a space after <code>##</code>, <code>&gt;</code>, and <code>-</code>.</li>
+    {% if show_preview_tip | default(true) %}
+      <li>Save to update the Preview at the top of the page.</li>
+    {% endif %}
+  </ul>
+  {% if show_image_tip | default(true) %}
+    <p class="help-note"><strong>Adding a photo:</strong> "Add image" puts the photo line at the end of your post. Cut and paste that whole line to where you want the photo, on its own line with a blank line above and below. Don't change the media number. Deleting the line removes the photo.</p>
+  {% endif %}
+</details>

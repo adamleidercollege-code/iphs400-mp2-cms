@@ -339,6 +339,25 @@ def test_formatting_help_examples_render_through_the_real_sanitizer():
         assert example["you_get"] == nh3.clean(example["you_get"])
 
 
+def test_page_editor_shows_a_formatting_help_box_open_by_default(client_as):
+    admin = models.get_user_by_email("admin@example.test")
+    program = _seed_program(admin.id)
+    c = client_as("admin")
+
+    edit_page = c.get(f"/admin/pages/{program.id}/edit")
+    assert '<details class="formatting-help" open>' in edit_page.text
+    assert "Formatting help" in edit_page.text
+    assert "## Getting there" in edit_page.text
+    assert "<h2>Getting there</h2>" in edit_page.text
+    assert "<a href=\"https://example.com\"" in edit_page.text
+    assert "already the big heading" in edit_page.text
+    assert "pressing Enter once doesn't start a new one" in edit_page.text
+    # A Page has no live Preview pane and no inline "Add image" upload
+    # (only a Program's cover) — those two tips must not appear.
+    assert "update the Preview" not in edit_page.text
+    assert "Adding a photo" not in edit_page.text
+
+
 # -- Inline images in a Post's body -------------------------------------------
 
 
