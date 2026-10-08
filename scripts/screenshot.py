@@ -10,6 +10,31 @@ Starts the real app (`app.main:app`) on a throwaway port, waits for it to
 come up, then drives headless Chromium to capture each --path at each
 --width as "<name>-<width>.png" under --out. Pass --login EMAIL PASSWORD to
 authenticate first (needed for admin screenshots).
+
+The 6 screens check_submission.py --stage 2 requires in docs/screenshots/
+("{screen}-{1280|390}.png" for screen in login, dashboard, content-list,
+editor, users, editor-denied) — pass these --path/name pairs exactly so the
+output filenames match. --login runs before any --path in the same
+invocation, so capture the (unauthenticated) login screen in its own run:
+
+    uv run python scripts/screenshot.py --out docs/screenshots \\
+        --widths 1280 390 --path /login login
+
+    uv run python scripts/screenshot.py --out docs/screenshots \\
+        --widths 1280 390 \\
+        --login admin@example.test change-me-admin \\
+        --path /admin/dashboard dashboard \\
+        --path /admin/content content-list \\
+        --path /admin/posts/new editor \\
+        --path /admin/accounts users
+
+Then a third run, logged in as an editor (Ambassador), to capture the
+Staff-only page being refused:
+
+    uv run python scripts/screenshot.py --out docs/screenshots \\
+        --widths 1280 390 \\
+        --login editor@example.test change-me-editor \\
+        --path /admin/accounts editor-denied
 """
 from __future__ import annotations
 
