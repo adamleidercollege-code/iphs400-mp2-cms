@@ -528,3 +528,23 @@ def test_seed_demo_seeds_program_covers_and_post_media(client):
     with_inline_image = [p for p in all_posts if "](media/" in p.body]
     assert with_cover
     assert with_inline_image
+
+    # #15 follow-up: a seeded Post's inline image is never the same Media as
+    # its own cover.
+    for post in with_cover:
+        inline_ids = markdown.referenced_media_ids(post.body)
+        assert post.cover_media_id not in inline_ids
+
+
+def test_seed_demo_program_photos_are_real_files_with_credits(client):
+    """#15 follow-up: real downloaded photos, not generated gradients, with
+    author/license/source recorded for each one."""
+    seed_demo = _load_seed_demo()
+    credits = seed_demo._load_photo_credits()
+    assert set(seed_demo.PROGRAM_PHOTOS.values()) <= set(credits)
+    assert seed_demo.INLINE_PHOTO in credits
+    for filename, info in credits.items():
+        path = seed_demo.SEED_PHOTOS_DIR / filename
+        assert path.is_file(), f"{filename} is listed in credits.json but missing on disk"
+        assert path.read_bytes()[:3] == b"\xff\xd8\xff"  # a real JPEG, not a gradient PNG
+        assert info["author"] and info["license"] and info["source_url"]

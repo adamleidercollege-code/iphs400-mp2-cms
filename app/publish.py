@@ -266,9 +266,13 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 .card-grid.card-grid-posts { grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); }
 /* A grid of only one or two cards (a Continent with one Country, a Country
    with two Programs) shouldn't stretch them into oversized banners or leave
-   a lone card hugging the left edge — cap the width and center the row. */
-.card-grid:has(> .card:only-child),
-.card-grid:has(> .card:first-child:nth-last-child(2)) {
+   a lone card hugging the left edge — cap the width and center the row.
+   Excludes .card-grid-posts (#15 follow-up): a Program page's per-Topic
+   post grid sits directly under its own left-aligned heading
+   (.topic-group-title), so centering a single card there would float it
+   away from the heading it belongs to instead of lining up under it. */
+.card-grid:not(.card-grid-posts):has(> .card:only-child),
+.card-grid:not(.card-grid-posts):has(> .card:first-child:nth-last-child(2)) {
   grid-template-columns: repeat(auto-fit, minmax(16rem, 22rem));
   justify-content: center;
 }

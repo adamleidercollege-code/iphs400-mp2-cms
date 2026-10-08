@@ -68,11 +68,15 @@ def test_missing_dotenv_file_is_a_no_op(tmp_path):
 
 def _fresh_checkout(tmp_path: Path) -> Path:
     """Only what scripts/seed_demo.py needs to import and run: app/,
-    scripts/seed_demo.py, and .env.example — a fresh clone minus git."""
+    scripts/seed_demo.py (plus its seed_photos/ assets), and .env.example —
+    a fresh clone minus git."""
     checkout = tmp_path / "checkout"
     shutil.copytree(_ROOT / "app", checkout / "app")
     (checkout / "scripts").mkdir()
     shutil.copy(_ROOT / "scripts" / "seed_demo.py", checkout / "scripts" / "seed_demo.py")
+    shutil.copytree(
+        _ROOT / "scripts" / "seed_photos", checkout / "scripts" / "seed_photos"
+    )
     shutil.copy(_ROOT / ".env.example", checkout / ".env.example")
     return checkout
 

@@ -12,38 +12,99 @@ The rubric expects this to run clean on a fresh clone with .env.example values
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import db, models  # noqa: E402
-from app.services import media_store, placeholder_image  # noqa: E402
+from app.services import media_store  # noqa: E402
 
-# One (top, bottom) gradient per Continent, roughly matching app.publish's
-# CSS --region-N accents (#15: scripts/seed_demo.py seeds placeholder covers,
-# since Pillow isn't a dependency this project can add — see
-# app.services.placeholder_image).
-REGION_GRADIENTS = [
-    ((201, 138, 59), (156, 103, 35)),   # gold
-    ((46, 125, 107), (36, 99, 85)),     # teal
-    ((201, 87, 59), (156, 60, 35)),     # terracotta
-]
+# #15 follow-up: real, openly-licensed photos (downloaded once from
+# Wikimedia Commons, committed here) in place of the original gradient
+# placeholders — see SEED_PHOTOS_DIR/credits.json for each one's author,
+# license, and source, and the seeded "Photo Credits" standalone Page below
+# for the reader-facing version. Falls back to a gradient placeholder (via
+# app.services.placeholder_image, still used by tests/test_media.py) only if
+# a photo file listed in credits.json is missing from a clone — it shouldn't
+# be, since these are ordinary tracked files, not a runtime download.
+SEED_PHOTOS_DIR = Path(__file__).resolve().parent / "seed_photos"
+
+# Each Program's cover photo (also reused as its anchor Post's own cover,
+# below) — one photo per city/country, so "fits the Program" stays literal.
+PROGRAM_PHOTOS = {
+    "Kyoto Exchange": "kyoto.jpg",
+    "Seoul Studies": "seoul.jpg",
+    "Nairobi Fieldwork": "nairobi.jpg",
+    "Cape Town Semester": "cape-town.jpg",
+    "Madrid Language Immersion": "madrid.jpg",
+    "Paris Arts & Culture": "paris.jpg",
+}
+# The shared inline photo for every anchor Post's body — deliberately NOT a
+# Program photo, so an anchor Post's inline image is never the same picture
+# as its own cover.
+INLINE_PHOTO = "notebook.jpg"
 
 
-def _seed_cover_image(
-    alt_text: str, gradient: tuple, uploaded_by: int, post_id: int | None = None
+def _load_photo_credits() -> dict:
+    with open(SEED_PHOTOS_DIR / "credits.json") as f:
+        return json.load(f)
+
+
+def _seed_photo_media(
+    filename: str, credits: dict, uploaded_by: int, post_id: int | None = None
 ) -> models.Media:
     """`post_id` is only for an inline body image (see app/db.py's media
     table comment) — a cover (the default, post_id=None) is never
     body-text-referenced, so it doesn't need an owning Post."""
-    top, bottom = gradient
-    data = placeholder_image.gradient_png(640, 360, top, bottom)
-    filename, content_type, size = media_store.save_upload(data, uploaded_by)
-    return models.create_media(filename=filename, content_type=content_type,
+    info = credits[filename]
+    path = SEED_PHOTOS_DIR / filename
+    if not path.is_file():
+        from app.services import placeholder_image
+
+        data = placeholder_image.gradient_png(640, 360, (91, 42, 134), (62, 28, 94))
+        alt_text = f"{info['alt']} (placeholder — photo file missing)"
+    else:
+        data = path.read_bytes()
+        alt_text = info["alt"]
+    stored_filename, content_type, size = media_store.save_upload(data, uploaded_by)
+    return models.create_media(filename=stored_filename, content_type=content_type,
                                 size=size, alt_text=alt_text, uploaded_by=uploaded_by,
                                 post_id=post_id)
+
+
+def _build_photo_credits_body(credits: dict) -> str:
+    """Markdown for the seeded "Photo Credits" standalone Page — generated
+    from credits.json rather than hand-duplicated, so it can't drift from
+    what's actually seeded."""
+    lines = [
+        "The cover and inline photos on this demo site are real photographs from "
+        "[Wikimedia Commons](https://commons.wikimedia.org/), each released under a "
+        "Creative Commons license that asks for attribution. Credited here, per "
+        "each license's terms.",
+        "",
+        "## Program covers",
+        "",
+    ]
+    for program_title, filename in PROGRAM_PHOTOS.items():
+        info = credits[filename]
+        lines.append(
+            f"- **{program_title}**: [{info['commons_title']}]({info['source_url']}) "
+            f"by {info['author']}, {info['license']}"
+        )
+    inline = credits[INLINE_PHOTO]
+    lines += [
+        "",
+        "## Inline photo",
+        "",
+        f"- [{inline['commons_title']}]({inline['source_url']}) "
+        f"by {inline['author']}, {inline['license']}",
+    ]
+    return "\n".join(lines)
+
 
 # Continent -> Country -> Program -> body, each with its own clearly
 # fictional description (T11 follow-up: no more "Placeholder copy").
@@ -655,22 +716,24 @@ def _seed_pages(admin_id: int) -> list[models.Page]:
         )
         return models.publish_page(page.id)
 
+    photo_credits = _load_photo_credits()
     programs: list[models.Page] = []
-    for region_i, (continent_title, continent_data) in enumerate(CONTINENTS.items()):
+    for continent_title, continent_data in CONTINENTS.items():
         continent = _add(home.id, continent_title, continent_data["description"])
-        gradient = REGION_GRADIENTS[region_i % len(REGION_GRADIENTS)]
         for country_title, country_data in continent_data["countries"].items():
             country = _add(continent.id, country_title, country_data["description"])
             for program_title, program_body in country_data["programs"].items():
                 program = _add(country.id, program_title, program_body)
-                cover = _seed_cover_image(
-                    f"{program_title} cover photo", gradient, admin_id
-                )
-                models.set_page_cover(program.id, cover.id)
+                photo_filename = PROGRAM_PHOTOS.get(program_title)
+                if photo_filename:
+                    cover = _seed_photo_media(photo_filename, photo_credits, admin_id)
+                    models.set_page_cover(program.id, cover.id)
                 programs.append(program)
 
     for standalone_title, body in STANDALONE_PAGES.items():
         _add(home.id, standalone_title, body, show_in_footer=True)
+    _add(home.id, "Photo Credits", _build_photo_credits_body(photo_credits),
+         show_in_footer=True)
 
     print("Seeded the Continent -> Country -> Program tree and standalone pages.")
     return programs
@@ -720,13 +783,14 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
 
     ambassadors = _ensure_fictional_ambassadors()
     tags = _seed_tags()
+    photo_credits = _load_photo_credits()
 
     for i, program in enumerate(programs):
         specs = PROGRAM_POSTS.get(program.title)
         if not specs:
             continue
         anchor_status = POST_STATUSES[i % len(POST_STATUSES)]
-        gradient = REGION_GRADIENTS[i % len(REGION_GRADIENTS)]
+        photo_filename = PROGRAM_PHOTOS.get(program.title)
         for spec in specs:
             is_anchor = spec["author"] is None
             author_id = editor_id if is_anchor else ambassadors[spec["author"]].id
@@ -741,14 +805,15 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
             # The anchor post (the editor's own, cycling draft/pending/
             # published across the catalog) also carries a cover and an
             # inline body image, in every status — #15 acceptance needs a
-            # draft's images proven never to reach `cms publish`.
+            # draft's images proven never to reach `cms publish`. The inline
+            # image is deliberately a different photo than the cover (#15
+            # follow-up), never the Program's own picture reused twice.
             if is_anchor:
-                cover = _seed_cover_image(
-                    f"{spec['title']} cover photo", gradient, author_id
-                )
-                models.set_post_cover(post.id, cover.id)
-                inline = _seed_cover_image(
-                    f"A scene from {program.title}", gradient, author_id, post_id=post.id
+                if photo_filename:
+                    cover = _seed_photo_media(photo_filename, photo_credits, author_id)
+                    models.set_post_cover(post.id, cover.id)
+                inline = _seed_photo_media(
+                    INLINE_PHOTO, photo_credits, author_id, post_id=post.id
                 )
                 models.update_post(
                     post.id, title=post.title, topic=post.topic,
