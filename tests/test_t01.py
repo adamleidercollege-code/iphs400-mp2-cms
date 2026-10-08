@@ -86,6 +86,8 @@ def test_stub_route_allows_admin(client_as):
 def test_stub_route_rejects_editor(client_as):
     response = client_as("editor").get("/admin/_stub")
     assert response.status_code == 403
+    assert "this page is for cge staff only" in response.text.lower()
+    assert 'href="/admin"' in response.text
 
 
 def test_stub_route_redirects_anonymous(client):

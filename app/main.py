@@ -15,7 +15,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import db, settings
 from app.routes import accounts, auth, console, media, pages, posts, public, tags
-from app.routes.auth import AdminRequired, CsrfInvalid, LoginRequired
+from app.routes.auth import AdminRequired, CsrfInvalid, LoginRequired, get_current_user, templates
+from app.services.css_path import css_path_for
 
 
 def create_app() -> FastAPI:
@@ -30,7 +31,12 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(AdminRequired)
     def _admin_required(request: Request, exc: AdminRequired):
-        return PlainTextResponse("Forbidden", status_code=403)
+        return templates.TemplateResponse(
+            request, "admin/forbidden.html",
+            {"title": "Staff only", "user": get_current_user(request),
+             "css_path": css_path_for(request), "my_posts_href": "/admin"},
+            status_code=403,
+        )
 
     @app.exception_handler(CsrfInvalid)
     def _csrf_invalid(request: Request, exc: CsrfInvalid):
