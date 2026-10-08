@@ -174,6 +174,9 @@ button.btn-danger:hover { background: var(--danger-dark); }
   background: #fff;
   max-width: 40rem;
 }
+/* Same overflow fix as app.publish's .prose img, for the live admin
+   preview of a Post's body (templates/admin/posts_form.html). */
+.post-preview img, .preview-pane img { max-width: 100%; height: auto; }
 
 /* -- lists standing in for tables --------------------------------------- */
 ul { list-style: none; margin: 0; padding: 0; }

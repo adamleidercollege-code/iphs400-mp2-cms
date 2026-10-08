@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from app import models, settings
+from app import models, publish, settings
 from app.publish import render_site
-from app.services import markdown, media_store, placeholder_image
+from app.services import console_shell, markdown, media_store, placeholder_image
 from tests.conftest import _csrf_token_from
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -417,6 +417,63 @@ def test_a_drafts_images_are_never_published(client_as, tmp_path):
     out = render_site(tmp_path / "site")
     assert not (out / "media").exists() or not list((out / "media").glob("*"))
     assert not list((out / "asia" / "japan" / "kyoto-exchange").glob("still-drafting"))
+
+
+# -- An inline image fits its container, never overflows the body panel -----
+
+
+def test_prose_images_are_constrained_to_their_container_on_the_public_site():
+    """Regression: a Post's inline image renders at its real upload
+    resolution, and without a width cap it ran past the edge of the body
+    panel it sits in (the "Fieldwork notes are not essays" post, published
+    to the live site). Covers both app.publish's exported CSS and the live
+    preview, which inline the same string (test_public_layout.py's
+    test_preview_stylesheet_is_not_html_escaped already proves they match)."""
+    assert ".prose img { max-width: 100%; height: auto; }" in publish.CSS
+
+
+def test_prose_images_are_constrained_to_their_container_in_the_admin_preview():
+    assert (
+        ".post-preview img, .preview-pane img { max-width: 100%; height: auto; }"
+        in console_shell.ADMIN_CSS
+    )
+
+
+def test_a_published_posts_inline_image_html_sits_inside_a_width_constrained_rule(
+    client_as, tmp_path
+):
+    """Belt and suspenders on the regression above: the actual exported HTML
+    for a Post with an inline image renders that <img> inside the .prose
+    panel the constraining rule targets, not some other container the CSS
+    fix wouldn't reach."""
+    admin = models.get_user_by_email("admin@example.test")
+    program = _seed_program(admin.id)
+    c = client_as("admin")
+
+    new_page = c.get(f"/admin/posts/new?program_id={program.id}")
+    token = _csrf_token_from(new_page.text)
+    c.post("/admin/posts/new", data={
+        "program_id": str(program.id), "title": "Wide Photo Post", "body": "Some text.",
+        "topic": "general", "action": "save", "csrf_token": token,
+    })
+    post = models.list_posts_by_program(program.id)[0]
+    edit_page = c.get(f"/admin/posts/{post.id}/edit")
+    token = _csrf_token_from(edit_page.text)
+    c.post(f"/admin/posts/{post.id}/images",
+           data={"alt_text": "A wide photo", "csrf_token": token},
+           files={"image": ("wide.png", _valid_png(), "image/png")})
+
+    token = _admin_csrf(c)
+    c.post(f"/admin/posts/{post.id}/publish", data={"csrf_token": token})
+
+    out = render_site(tmp_path / "site")
+    post_html = (
+        out / "asia" / "japan" / "kyoto-exchange" / "wide-photo-post" / "index.html"
+    ).read_text()
+    article_start = post_html.index('class="panel prose post-article"')
+    article_end = post_html.index("</article>")
+    image_at = post_html.index('alt="A wide photo"')
+    assert article_start < image_at < article_end
 
 
 # -- Hand-typing another Post's (or a draft's) media id must never work ------

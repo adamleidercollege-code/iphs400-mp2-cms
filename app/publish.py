@@ -231,6 +231,10 @@ main { display: block; flex: 1 0 auto; padding-bottom: var(--section-gap); }
 .prose { max-width: 40rem; }
 .prose > :first-child { margin-top: 0; }
 .prose > :last-child { margin-bottom: 0; }
+/* An inline image a Post's body references (app.services.markdown's
+   media/<id> placeholder) is a real photo at its own upload resolution —
+   without this it can run past the edge of the panel it sits in. */
+.prose img { max-width: 100%; height: auto; }
 .prose h2 {
   font-size: 1.4rem;
   margin: 2.25rem 0 0.75rem;
