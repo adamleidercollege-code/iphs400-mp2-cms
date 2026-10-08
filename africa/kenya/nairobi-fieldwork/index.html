@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../../style.css?v=c1390f08">
+  <link rel="stylesheet" href="../../../style.css?v=077ecf71">
   
   
 </head>
@@ -18,8 +18,137 @@
       <nav class="site-nav">
         <a href="../../../index.html">Home</a><a href="../../../africa/index.html" class="is-active">Africa</a><a href="../../../asia/index.html">Asia</a><a href="../../../europe/index.html">Europe</a>
       </nav>
+      
+      <div class="site-search site-search--header" data-search-root>
+        <form class="search-form" role="search" onsubmit="return false;">
+          <input type="search" class="search-input" placeholder="Search the site" aria-label="Search the whole site">
+          <span class="search-fields">
+            <label><input type="checkbox" class="search-field" value="title" checked> Title</label>
+            <label><input type="checkbox" class="search-field" value="text" checked> Text</label>
+            <label><input type="checkbox" class="search-field" value="tags" checked> Tags</label>
+          </span>
+        </form>
+        <ul class="search-results" hidden></ul>
+      </div>
+      
     </div>
   </header>
+  
+  <script>
+    /* Client-side search (#10) against search-index.json — no server-side
+       component. Shared between the sitewide box above (every page,
+       unscoped) and a Continent/Country/Program page's own scoped box
+       (public/page.html, further down the body), so both filter the same
+       fetched index instead of each doing its own request. This script runs
+       before <main>'s content so window.CGESearch exists by the time a
+       scoped box's own inline script (inside the page's content) calls it.
+       Results are built with DOM methods, never innerHTML, because a Post's
+       title and tags are Ambassador-authored text. */
+    window.CGESearch = (function () {
+      var indexPromise = null;
+
+      function loadIndex(url) {
+        if (!indexPromise) {
+          indexPromise = fetch(url)
+            .then(function (response) { return response.json(); })
+            .catch(function () { return []; });
+        }
+        return indexPromise;
+      }
+
+      function activeFields(root) {
+        var fields = [];
+        root.querySelectorAll(".search-field").forEach(function (box) {
+          if (box.checked) fields.push(box.value);
+        });
+        return fields;
+      }
+
+      function matches(entry, term, fields) {
+        var haystacks = [];
+        if (fields.indexOf("title") !== -1) haystacks.push(entry.title);
+        if (fields.indexOf("text") !== -1) haystacks.push(entry.text);
+        if (fields.indexOf("tags") !== -1) haystacks.push(entry.tags.join(" "));
+        return haystacks.some(function (text) {
+          return (text || "").toLowerCase().indexOf(term) !== -1;
+        });
+      }
+
+      function inScope(entry, scope) {
+        if (!scope) return true;
+        return entry.chain.slice(0, scope.length).join("/") === scope.join("/");
+      }
+
+      function renderResults(list, matched, siteRoot) {
+        list.textContent = "";
+        if (!matched.length) {
+          var empty = document.createElement("li");
+          empty.className = "search-empty";
+          empty.textContent = "No results.";
+          list.appendChild(empty);
+          return;
+        }
+        matched.slice(0, 20).forEach(function (entry) {
+          var item = document.createElement("li");
+          item.className = "search-result";
+          var link = document.createElement("a");
+          link.href = siteRoot + entry.href;
+          link.textContent = entry.title;
+          item.appendChild(link);
+          if (entry.tags.length) {
+            var tags = document.createElement("span");
+            tags.className = "search-result-tags";
+            tags.textContent = entry.tags.join(", ");
+            item.appendChild(tags);
+          }
+          list.appendChild(item);
+        });
+      }
+
+      function setup(root, options) {
+        var input = root.querySelector(".search-input");
+        var list = root.querySelector(".search-results");
+
+        function run() {
+          var term = input.value.trim().toLowerCase();
+          if (!term) {
+            list.hidden = true;
+            return;
+          }
+          var fields = activeFields(root);
+          loadIndex(options.indexUrl).then(function (entries) {
+            var matched = entries.filter(function (entry) {
+              return inScope(entry, options.scope) && matches(entry, term, fields);
+            });
+            renderResults(list, matched, options.siteRoot);
+            list.hidden = false;
+          });
+        }
+
+        input.addEventListener("input", run);
+        root.querySelectorAll(".search-field").forEach(function (box) {
+          box.addEventListener("change", run);
+        });
+        document.addEventListener("click", function (event) {
+          if (!root.contains(event.target)) list.hidden = true;
+        });
+      }
+
+      return { setup: setup };
+    })();
+
+    (function () {
+      var header = document.querySelector(".site-search--header[data-search-root]");
+      if (header) {
+        window.CGESearch.setup(header, {
+          indexUrl: "../../../search-index.json",
+          siteRoot: "../../../",
+          scope: null,
+        });
+      }
+    })();
+  </script>
+  
   <main>
   
     <section class="page-header region-0">
@@ -37,6 +166,37 @@
   
 
   <div class="wrap">
+    
+      <section class="section">
+        <div class="panel search-panel">
+          <h2 class="info-card-title">Search Nairobi Fieldwork</h2>
+          <div class="site-search site-search--scoped" data-search-root
+               data-search-scope="africa/kenya/nairobi-fieldwork">
+            <form class="search-form" role="search" onsubmit="return false;">
+              <input type="search" class="search-input" placeholder="Search within Nairobi Fieldwork" aria-label="Search within Nairobi Fieldwork">
+              <span class="search-fields">
+                <label><input type="checkbox" class="search-field" value="title" checked> Title</label>
+                <label><input type="checkbox" class="search-field" value="text" checked> Text</label>
+                <label><input type="checkbox" class="search-field" value="tags" checked> Tags</label>
+              </span>
+            </form>
+            <ul class="search-results" hidden></ul>
+          </div>
+        </div>
+      </section>
+      <script>
+        (function () {
+          var root = document.querySelector(".site-search--scoped[data-search-root]");
+          var scopeAttr = root.getAttribute("data-search-scope");
+          window.CGESearch.setup(root, {
+            indexUrl: "../../../search-index.json",
+            siteRoot: "../../../",
+            scope: scopeAttr ? scopeAttr.split("/") : null,
+          });
+        })();
+      </script>
+    
+
     
 
     
@@ -60,14 +220,17 @@
             
           </div>
           
+          
             <section class="post-topic-group" data-topic="social-life">
               <h3 class="topic-group-title topic-social-life">Social Life</h3>
               <ul class="card-grid card-grid-posts">
                 
-  <li class="card post-card">
+  <li class="card post-card" data-tags="">
     
     <h3 class="post-card-title post-card-title-first"><a class="card-link" href="../../../africa/kenya/nairobi-fieldwork/saturday-football-at-the-community-centre/index.html">Saturday football at the community centre</a></h3>
     <p class="card-desc">The organisation I am placed with runs a youth football league on Saturdays. I turned up in week two to take photographs for their…</p>
+    
+
     <div class="byline">
       <span class="avatar" aria-hidden="true">LO</span>
       <span class="byline-text">
@@ -84,10 +247,12 @@
               <h3 class="topic-group-title topic-academics">Academics</h3>
               <ul class="card-grid card-grid-posts">
                 
-  <li class="card post-card">
+  <li class="card post-card" data-tags="">
     
     <h3 class="post-card-title post-card-title-first"><a class="card-link" href="../../../africa/kenya/nairobi-fieldwork/fieldwork-notes-are-not-essays/index.html">Fieldwork notes are not essays</a></h3>
     <p class="card-desc">My first set of field notes came back with more comments than content. Not because the observations were wrong, but because I had written…</p>
+    
+
     <div class="byline">
       <span class="avatar" aria-hidden="true">JA</span>
       <span class="byline-text">
@@ -104,10 +269,12 @@
               <h3 class="topic-group-title topic-other">Other</h3>
               <ul class="card-grid card-grid-posts">
                 
-  <li class="card post-card">
+  <li class="card post-card" data-tags="">
     
     <h3 class="post-card-title post-card-title-first"><a class="card-link" href="../../../africa/kenya/nairobi-fieldwork/what-i-should-have-packed/index.html">What I should have packed</a></h3>
     <p class="card-desc">The packing list the program sends is accurate and incomplete, which is the worst combination because you trust it. Things I brought and…</p>
+    
+
     <div class="byline">
       <span class="avatar" aria-hidden="true">PP</span>
       <span class="byline-text">
@@ -123,16 +290,40 @@
         </section>
         <script>
           (function () {
-            var buttons = document.querySelectorAll(".topic-pill");
+            var topicButtons = document.querySelectorAll(".topic-pill");
+            var tagButtons = document.querySelectorAll(".tag-pill");
             var groups = document.querySelectorAll(".post-topic-group");
-            buttons.forEach(function (btn) {
-              btn.addEventListener("click", function () {
-                buttons.forEach(function (b) { b.classList.remove("is-active"); });
-                btn.classList.add("is-active");
-                var topic = btn.getAttribute("data-topic");
-                groups.forEach(function (g) {
-                  g.hidden = topic !== "all" && g.getAttribute("data-topic") !== topic;
+            var selectedTopic = "all";
+            var selectedTag = "all";
+
+            function apply() {
+              groups.forEach(function (g) {
+                var topicMatch = selectedTopic === "all" || g.getAttribute("data-topic") === selectedTopic;
+                var visibleCount = 0;
+                g.querySelectorAll(".post-card").forEach(function (card) {
+                  var tags = (card.getAttribute("data-tags") || "").split(",").filter(Boolean);
+                  var visible = topicMatch && (selectedTag === "all" || tags.indexOf(selectedTag) !== -1);
+                  card.hidden = !visible;
+                  if (visible) visibleCount++;
                 });
+                g.hidden = !topicMatch || visibleCount === 0;
+              });
+            }
+
+            topicButtons.forEach(function (btn) {
+              btn.addEventListener("click", function () {
+                topicButtons.forEach(function (b) { b.classList.remove("is-active"); });
+                btn.classList.add("is-active");
+                selectedTopic = btn.getAttribute("data-topic");
+                apply();
+              });
+            });
+            tagButtons.forEach(function (btn) {
+              btn.addEventListener("click", function () {
+                tagButtons.forEach(function (b) { b.classList.remove("is-active"); });
+                btn.classList.add("is-active");
+                selectedTag = btn.getAttribute("data-tag");
+                apply();
               });
             });
           })();

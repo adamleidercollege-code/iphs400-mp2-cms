@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../../../style.css?v=c1390f08">
+  <link rel="stylesheet" href="../../../../style.css?v=077ecf71">
   
   
 </head>
@@ -18,8 +18,137 @@
       <nav class="site-nav">
         <a href="../../../../index.html">Home</a><a href="../../../../africa/index.html">Africa</a><a href="../../../../asia/index.html">Asia</a><a href="../../../../europe/index.html" class="is-active">Europe</a>
       </nav>
+      
+      <div class="site-search site-search--header" data-search-root>
+        <form class="search-form" role="search" onsubmit="return false;">
+          <input type="search" class="search-input" placeholder="Search the site" aria-label="Search the whole site">
+          <span class="search-fields">
+            <label><input type="checkbox" class="search-field" value="title" checked> Title</label>
+            <label><input type="checkbox" class="search-field" value="text" checked> Text</label>
+            <label><input type="checkbox" class="search-field" value="tags" checked> Tags</label>
+          </span>
+        </form>
+        <ul class="search-results" hidden></ul>
+      </div>
+      
     </div>
   </header>
+  
+  <script>
+    /* Client-side search (#10) against search-index.json — no server-side
+       component. Shared between the sitewide box above (every page,
+       unscoped) and a Continent/Country/Program page's own scoped box
+       (public/page.html, further down the body), so both filter the same
+       fetched index instead of each doing its own request. This script runs
+       before <main>'s content so window.CGESearch exists by the time a
+       scoped box's own inline script (inside the page's content) calls it.
+       Results are built with DOM methods, never innerHTML, because a Post's
+       title and tags are Ambassador-authored text. */
+    window.CGESearch = (function () {
+      var indexPromise = null;
+
+      function loadIndex(url) {
+        if (!indexPromise) {
+          indexPromise = fetch(url)
+            .then(function (response) { return response.json(); })
+            .catch(function () { return []; });
+        }
+        return indexPromise;
+      }
+
+      function activeFields(root) {
+        var fields = [];
+        root.querySelectorAll(".search-field").forEach(function (box) {
+          if (box.checked) fields.push(box.value);
+        });
+        return fields;
+      }
+
+      function matches(entry, term, fields) {
+        var haystacks = [];
+        if (fields.indexOf("title") !== -1) haystacks.push(entry.title);
+        if (fields.indexOf("text") !== -1) haystacks.push(entry.text);
+        if (fields.indexOf("tags") !== -1) haystacks.push(entry.tags.join(" "));
+        return haystacks.some(function (text) {
+          return (text || "").toLowerCase().indexOf(term) !== -1;
+        });
+      }
+
+      function inScope(entry, scope) {
+        if (!scope) return true;
+        return entry.chain.slice(0, scope.length).join("/") === scope.join("/");
+      }
+
+      function renderResults(list, matched, siteRoot) {
+        list.textContent = "";
+        if (!matched.length) {
+          var empty = document.createElement("li");
+          empty.className = "search-empty";
+          empty.textContent = "No results.";
+          list.appendChild(empty);
+          return;
+        }
+        matched.slice(0, 20).forEach(function (entry) {
+          var item = document.createElement("li");
+          item.className = "search-result";
+          var link = document.createElement("a");
+          link.href = siteRoot + entry.href;
+          link.textContent = entry.title;
+          item.appendChild(link);
+          if (entry.tags.length) {
+            var tags = document.createElement("span");
+            tags.className = "search-result-tags";
+            tags.textContent = entry.tags.join(", ");
+            item.appendChild(tags);
+          }
+          list.appendChild(item);
+        });
+      }
+
+      function setup(root, options) {
+        var input = root.querySelector(".search-input");
+        var list = root.querySelector(".search-results");
+
+        function run() {
+          var term = input.value.trim().toLowerCase();
+          if (!term) {
+            list.hidden = true;
+            return;
+          }
+          var fields = activeFields(root);
+          loadIndex(options.indexUrl).then(function (entries) {
+            var matched = entries.filter(function (entry) {
+              return inScope(entry, options.scope) && matches(entry, term, fields);
+            });
+            renderResults(list, matched, options.siteRoot);
+            list.hidden = false;
+          });
+        }
+
+        input.addEventListener("input", run);
+        root.querySelectorAll(".search-field").forEach(function (box) {
+          box.addEventListener("change", run);
+        });
+        document.addEventListener("click", function (event) {
+          if (!root.contains(event.target)) list.hidden = true;
+        });
+      }
+
+      return { setup: setup };
+    })();
+
+    (function () {
+      var header = document.querySelector(".site-search--header[data-search-root]");
+      if (header) {
+        window.CGESearch.setup(header, {
+          indexUrl: "../../../../search-index.json",
+          siteRoot: "../../../../",
+          scope: null,
+        });
+      }
+    })();
+  </script>
+  
   <main>
   <section class="page-header region-2">
     <div class="wrap">
@@ -30,6 +159,8 @@
 
       <span class="post-topic-badge topic-general">General</span>
       <h1 class="post-title">Six weeks of being slightly lost</h1>
+      
+
       <div class="byline byline-lg">
         <span class="avatar avatar-lg" aria-hidden="true">LO</span>
         <span class="byline-text">
@@ -61,10 +192,12 @@
 
         <ul class="card-grid">
           
-  <li class="card post-card">
+  <li class="card post-card" data-tags="">
     <span class="post-topic-badge topic-academics">Academics</span>
     <h3 class="post-card-title"><a class="card-link" href="../../../../europe/france/paris-arts-culture/critique-day-in-the-studio/index.html">Critique day in the studio</a></h3>
     <p class="card-desc">Critique here is slower and more formal than I am used to. Work goes up, everyone looks at it in silence for a genuinely long time, and…</p>
+    
+
     <div class="byline">
       <span class="avatar" aria-hidden="true">SR</span>
       <span class="byline-text">
@@ -74,10 +207,12 @@
     </div>
   </li>
 
-  <li class="card post-card">
+  <li class="card post-card" data-tags="">
     <span class="post-topic-badge topic-other">Other</span>
     <h3 class="post-card-title"><a class="card-link" href="../../../../europe/france/paris-arts-culture/museum-passes-bike-locks-and-other-logistics/index.html">Museum passes, bike locks, and other logistics</a></h3>
     <p class="card-desc">This is the unglamorous post. The program covers the interesting parts of being here; what it does not cover is the week of administrative…</p>
+    
+
     <div class="byline">
       <span class="avatar" aria-hidden="true">JA</span>
       <span class="byline-text">
