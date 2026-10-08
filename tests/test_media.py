@@ -13,7 +13,7 @@ import pytest
 
 from app import models, settings
 from app.publish import render_site
-from app.services import media_store, placeholder_image
+from app.services import markdown, media_store, placeholder_image
 from tests.conftest import _csrf_token_from
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -417,6 +417,95 @@ def test_a_drafts_images_are_never_published(client_as, tmp_path):
     out = render_site(tmp_path / "site")
     assert not (out / "media").exists() or not list((out / "media").glob("*"))
     assert not list((out / "asia" / "japan" / "kyoto-exchange").glob("still-drafting"))
+
+
+# -- Hand-typing another Post's (or a draft's) media id must never work ------
+
+
+def test_hand_typed_media_id_from_another_post_is_not_resolved_or_published(
+    client_as, tmp_path
+):
+    """A Post's body is a free-text form field — nothing stops a writer from
+    typing `![x](media/<id>)` for an id that isn't theirs. It must never
+    resolve to a real href, and app.publish must never copy that file."""
+    admin = models.get_user_by_email("admin@example.test")
+    program = _seed_program(admin.id)
+    c = client_as("admin")
+
+    other_post = models.create_post(
+        program_id=program.id, title="Someone else's draft", body="x",
+        topic="general", author_id=admin.id,
+    )
+    edit_page = c.get(f"/admin/posts/{other_post.id}/edit")
+    token = _csrf_token_from(edit_page.text)
+    c.post(f"/admin/posts/{other_post.id}/images",
+           data={"alt_text": "Not yours", "csrf_token": token},
+           files={"image": ("other.jpg", _valid_jpeg(), "image/jpeg")})
+
+    # other_post.body is now "x\n\n![Not yours](media/<id>)\n" — read the id
+    # back off the record rather than assuming it, same as the route does.
+    other_post = models.get_post_by_id(other_post.id)
+    other_media_id = max(markdown.referenced_media_ids(other_post.body))
+
+    victim_post = models.create_post(
+        program_id=program.id, title="Victim Post",
+        body=f"Legit text.\n\n![stolen](media/{other_media_id})\n",
+        topic="general", author_id=admin.id,
+    )
+    token = _admin_csrf(c)
+    c.post(f"/admin/posts/{victim_post.id}/publish", data={"csrf_token": token})
+    assert models.get_post_by_id(victim_post.id).status == "published"
+
+    # Live preview never resolves the stolen id to a real href.
+    live_html = c.get(f"/asia/japan/kyoto-exchange/victim-post/").text
+    stolen_filename = models.get_media_by_id(other_media_id).filename
+    assert stolen_filename not in live_html
+    assert 'src="#"' in live_html  # the unresolved placeholder, not silently dropped
+
+    out = render_site(tmp_path / "site")
+    media_files = {p.name for p in (out / "media").glob("*")} if (out / "media").exists() else set()
+    assert stolen_filename not in media_files
+
+    victim_html = (
+        out / "asia" / "japan" / "kyoto-exchange" / "victim-post" / "index.html"
+    ).read_text()
+    assert stolen_filename not in victim_html
+    assert 'src="#"' in victim_html
+
+
+def test_own_previously_uploaded_inline_image_still_renders_and_publishes(
+    client_as, tmp_path
+):
+    """The ownership check must not break the sanctioned flow: an image this
+    Post itself uploaded still resolves and gets copied."""
+    admin = models.get_user_by_email("admin@example.test")
+    program = _seed_program(admin.id)
+    c = client_as("admin")
+
+    new_page = c.get(f"/admin/posts/new?program_id={program.id}")
+    token = _csrf_token_from(new_page.text)
+    c.post("/admin/posts/new", data={
+        "program_id": str(program.id), "title": "Legit Post", "body": "Some text.",
+        "topic": "general", "action": "save", "csrf_token": token,
+    })
+    post = models.list_posts_by_program(program.id)[0]
+    edit_page = c.get(f"/admin/posts/{post.id}/edit")
+    token = _csrf_token_from(edit_page.text)
+    c.post(f"/admin/posts/{post.id}/images",
+           data={"alt_text": "Mine", "csrf_token": token},
+           files={"image": ("mine.png", _valid_png(), "image/png")})
+
+    token = _admin_csrf(c)
+    c.post(f"/admin/posts/{post.id}/publish", data={"csrf_token": token})
+
+    out = render_site(tmp_path / "site")
+    media_files = list((out / "media").glob("*"))
+    assert len(media_files) == 1
+    post_html = (
+        out / "asia" / "japan" / "kyoto-exchange" / "legit-post" / "index.html"
+    ).read_text()
+    assert f'src="../../../../media/{media_files[0].name}"' in post_html
+    assert 'alt="Mine"' in post_html
 
 
 # -- scripts/seed_demo.py: placeholder covers and inline images --------------

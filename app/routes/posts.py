@@ -98,6 +98,10 @@ def _render_form(
         post_view.media_cover(post.cover_media_id, post_view.media_href_for("/"))
         if post else None
     )
+    preview_media_href = (
+        post_view.post_body_media_href_for(post, "/", text=body)
+        if post else (lambda _media_id: "#")
+    )
     context = console_shell.console_context(request, user)
     context.update({
         "title": "Edit post" if post else "New post",
@@ -108,7 +112,7 @@ def _render_form(
         "form_body": body,
         "form_topic": topic,
         "form_tag_ids": selected_tag_ids,
-        "preview_html": markdown.render(body, media_href=post_view.media_href_for("/")),
+        "preview_html": markdown.render(body, media_href=preview_media_href),
         "topics": models.TOPIC_CHOICES,
         "tags": models.list_tags(),
         "cover": cover,
@@ -351,7 +355,8 @@ async def add_post_image(
                              error=str(exc), title=post.title, body=post.body,
                              topic=post.topic)
     media = models.create_media(filename=filename, content_type=content_type,
-                                 size=size, alt_text=alt_text, uploaded_by=user.id)
+                                 size=size, alt_text=alt_text, uploaded_by=user.id,
+                                 post_id=post.id)
     new_body = post.body.rstrip() + f"\n\n![{alt_text}](media/{media.id})\n"
     models.update_post(post_id, title=post.title, body=new_body, topic=post.topic)
     return console_shell.redirect_with_flash(

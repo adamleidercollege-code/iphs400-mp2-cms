@@ -379,6 +379,7 @@ class Media:
     size: int
     alt_text: str
     uploaded_by: int | None
+    post_id: int | None
     created_at: str
 
 
@@ -390,19 +391,21 @@ def _row_to_media(row: sqlite3.Row) -> Media:
         size=row["size"],
         alt_text=row["alt_text"],
         uploaded_by=row["uploaded_by"],
+        post_id=row["post_id"],
         created_at=row["created_at"],
     )
 
 
 def create_media(
-    filename: str, content_type: str, size: int, alt_text: str, uploaded_by: int | None
+    filename: str, content_type: str, size: int, alt_text: str, uploaded_by: int | None,
+    post_id: int | None = None,
 ) -> Media:
     conn = db.get_connection()
     try:
         cur = conn.execute(
-            "INSERT INTO media (filename, content_type, size, alt_text, uploaded_by) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (filename, content_type, size, alt_text, uploaded_by),
+            "INSERT INTO media (filename, content_type, size, alt_text, uploaded_by, post_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (filename, content_type, size, alt_text, uploaded_by, post_id),
         )
         conn.commit()
         return get_media_by_id(cur.lastrowid)

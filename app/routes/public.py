@@ -142,7 +142,9 @@ def post_context(post: models.Post, program: models.Page) -> dict:
 
     return {
         "post": post,
-        "body_html": markdown.render(post.body, media_href=media_href),
+        "body_html": markdown.render(
+            post.body, media_href=post_view.post_body_media_href_for(post, "/")
+        ),
         "topic_label": summary["topic_label"],
         "tags": summary["tags"],
         "cover": summary["cover"],

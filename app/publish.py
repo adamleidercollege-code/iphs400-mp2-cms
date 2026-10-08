@@ -752,7 +752,7 @@ def render_site(out: Path | None = None) -> Path:
             for post in posts:
                 if post.cover_media_id:
                     used_media_ids.add(post.cover_media_id)
-                used_media_ids |= markdown.referenced_media_ids(post.body)
+                used_media_ids |= post_view.owned_media_ids(post)
 
         intro_md, rest_md = markdown.split_intro(page.body)
         sections = []
@@ -819,7 +819,11 @@ def render_site(out: Path | None = None) -> Path:
                     author_role=summary["author_role"],
                     author_initials=summary["author_initials"],
                     published_date=summary["published_date"],
-                    body_html=markdown.render(post.body, media_href=post_media_href),
+                    body_html=markdown.render(
+                        post.body, media_href=post_view.post_body_media_href_for(
+                            post, post_site_root
+                        )
+                    ),
                     region=post_view.region_index(page, home, continents),
                     css_path=post_css_path,
                     nav=post_nav,

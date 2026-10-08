@@ -19,6 +19,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- An uploaded image (#15): a safe generated filename, never the one the
 -- browser sent, plus the alt text required before anything can reference it.
+-- post_id is set only for an image uploaded inline into a Post's body (never
+-- for a cover, which is always a freshly-uploaded file the cover route
+-- attaches directly) — it's what lets a Post's body safely reference
+-- "media/<id>" as free text: app.services.post_view.owned_media_ids only
+-- resolves/copies an id this Post itself uploaded, so hand-typing another
+-- Post's (or a draft's) id can never pull that file into a published page.
 CREATE TABLE IF NOT EXISTS media (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     filename TEXT NOT NULL UNIQUE,
@@ -26,6 +32,7 @@ CREATE TABLE IF NOT EXISTS media (
     size INTEGER NOT NULL,
     alt_text TEXT NOT NULL,
     uploaded_by INTEGER,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 

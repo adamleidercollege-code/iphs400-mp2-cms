@@ -32,12 +32,18 @@ REGION_GRADIENTS = [
 ]
 
 
-def _seed_cover_image(alt_text: str, gradient: tuple, uploaded_by: int) -> models.Media:
+def _seed_cover_image(
+    alt_text: str, gradient: tuple, uploaded_by: int, post_id: int | None = None
+) -> models.Media:
+    """`post_id` is only for an inline body image (see app/db.py's media
+    table comment) — a cover (the default, post_id=None) is never
+    body-text-referenced, so it doesn't need an owning Post."""
     top, bottom = gradient
     data = placeholder_image.gradient_png(640, 360, top, bottom)
     filename, content_type, size = media_store.save_upload(data, uploaded_by)
     return models.create_media(filename=filename, content_type=content_type,
-                                size=size, alt_text=alt_text, uploaded_by=uploaded_by)
+                                size=size, alt_text=alt_text, uploaded_by=uploaded_by,
+                                post_id=post_id)
 
 # Continent -> Country -> Program -> body, each with its own clearly
 # fictional description (T11 follow-up: no more "Placeholder copy").
@@ -742,7 +748,7 @@ def _seed_posts(programs: list[models.Page], editor_id: int) -> None:
                 )
                 models.set_post_cover(post.id, cover.id)
                 inline = _seed_cover_image(
-                    f"A scene from {program.title}", gradient, author_id
+                    f"A scene from {program.title}", gradient, author_id, post_id=post.id
                 )
                 models.update_post(
                     post.id, title=post.title, topic=post.topic,

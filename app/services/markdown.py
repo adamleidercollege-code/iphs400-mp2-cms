@@ -102,7 +102,14 @@ def strip_sections(markdown_text: str) -> str:
     return markdown_text[: match.start()].strip() if match else markdown_text.strip()
 
 
-_MEDIA_REF = re.compile(r"\(media/(\d+)\)")
+# Deliberately not anchored to `![alt](media/<id>)` syntax specifically —
+# markdown-it passes raw HTML through by default, so a hand-typed
+# `<img src="media/<id>">` reaches the same `media/<id>` substring in the
+# source text even though it never matches image-link punctuation. Matching
+# on the substring alone keeps this in sync with whatever actually ends up
+# resolvable in the rendered HTML (_MEDIA_SRC above operates on the
+# rendered output the same way, tag-agnostic).
+_MEDIA_REF = re.compile(r"media/(\d+)")
 
 
 def referenced_media_ids(markdown_text: str) -> set[int]:

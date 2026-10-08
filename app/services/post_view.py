@@ -63,6 +63,41 @@ def media_href_for(prefix: str) -> Callable[[int], str]:
     return _href
 
 
+def owned_media_ids(post: models.Post, text: str | None = None) -> set[int]:
+    """Every `media/<id>` reference in `text` (post.body if not given) that
+    this Post actually uploaded (app.routes.posts.add_post_image sets
+    Media.post_id at upload time) — hand-typing another id (someone else's
+    upload, a draft's media, a Program's cover) into the body text must
+    never pull that file into this Post's render or into app.publish's copy
+    step. Ownership is checked against the Post's own id, not the text's
+    source, so the admin preview's just-submitted (not yet saved) body is
+    covered too."""
+    owned = set()
+    for media_id in markdown.referenced_media_ids(post.body if text is None else text):
+        media = models.get_media_by_id(media_id)
+        if media is not None and media.post_id == post.id:
+            owned.add(media_id)
+    return owned
+
+
+def post_body_media_href_for(
+    post: models.Post, prefix: str, text: str | None = None
+) -> Callable[[int], str]:
+    """A `media_href` resolver for app.services.markdown.render(...),
+    scoped to only the `media/<id>` ids this Post owns (owned_media_ids
+    above) — anything else resolves to "#" rather than ever rendering (or
+    letting app.publish copy) a file this Post was never granted."""
+    owned = owned_media_ids(post, text)
+
+    def _href(media_id: int) -> str:
+        if media_id not in owned:
+            return "#"
+        media = models.get_media_by_id(media_id)
+        return f"{prefix}media/{media.filename}" if media else "#"
+
+    return _href
+
+
 def media_cover(
     media_id: int | None, media_href: Callable[[int], str] | None
 ) -> dict | None:
